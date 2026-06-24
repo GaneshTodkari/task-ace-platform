@@ -268,7 +268,9 @@ export function updateDB(mut: (db: DB) => void) {
 
 export function subscribe(fn: () => void) {
   listeners.add(fn);
-  return () => listeners.delete(fn);
+  return () => {
+    listeners.delete(fn);
+  };
 }
 
 export function resetDB() {
