@@ -18,6 +18,9 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedTasksIndexRouteImport } from './routes/_authenticated.tasks.index'
 import { Route as AuthenticatedTasksNewRouteImport } from './routes/_authenticated.tasks.new'
 import { Route as AuthenticatedTasksIdRouteImport } from './routes/_authenticated.tasks.$id'
+import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated.admin.users'
+import { Route as AuthenticatedAdminPredefinedRouteImport } from './routes/_authenticated.admin.predefined'
+import { Route as AuthenticatedAdminHierarchyRouteImport } from './routes/_authenticated.admin.hierarchy'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -64,6 +67,23 @@ const AuthenticatedTasksIdRoute = AuthenticatedTasksIdRouteImport.update({
   path: '/tasks/$id',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAdminPredefinedRoute =
+  AuthenticatedAdminPredefinedRouteImport.update({
+    id: '/admin/predefined',
+    path: '/admin/predefined',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAdminHierarchyRoute =
+  AuthenticatedAdminHierarchyRouteImport.update({
+    id: '/admin/hierarchy',
+    path: '/admin/hierarchy',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -71,6 +91,9 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/team': typeof AuthenticatedTeamRoute
+  '/admin/hierarchy': typeof AuthenticatedAdminHierarchyRoute
+  '/admin/predefined': typeof AuthenticatedAdminPredefinedRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/tasks/$id': typeof AuthenticatedTasksIdRoute
   '/tasks/new': typeof AuthenticatedTasksNewRoute
   '/tasks/': typeof AuthenticatedTasksIndexRoute
@@ -81,6 +104,9 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/team': typeof AuthenticatedTeamRoute
+  '/admin/hierarchy': typeof AuthenticatedAdminHierarchyRoute
+  '/admin/predefined': typeof AuthenticatedAdminPredefinedRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/tasks/$id': typeof AuthenticatedTasksIdRoute
   '/tasks/new': typeof AuthenticatedTasksNewRoute
   '/tasks': typeof AuthenticatedTasksIndexRoute
@@ -93,6 +119,9 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/team': typeof AuthenticatedTeamRoute
+  '/_authenticated/admin/hierarchy': typeof AuthenticatedAdminHierarchyRoute
+  '/_authenticated/admin/predefined': typeof AuthenticatedAdminPredefinedRoute
+  '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/tasks/$id': typeof AuthenticatedTasksIdRoute
   '/_authenticated/tasks/new': typeof AuthenticatedTasksNewRoute
   '/_authenticated/tasks/': typeof AuthenticatedTasksIndexRoute
@@ -105,6 +134,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/notifications'
     | '/team'
+    | '/admin/hierarchy'
+    | '/admin/predefined'
+    | '/admin/users'
     | '/tasks/$id'
     | '/tasks/new'
     | '/tasks/'
@@ -115,6 +147,9 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/notifications'
     | '/team'
+    | '/admin/hierarchy'
+    | '/admin/predefined'
+    | '/admin/users'
     | '/tasks/$id'
     | '/tasks/new'
     | '/tasks'
@@ -126,6 +161,9 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/notifications'
     | '/_authenticated/team'
+    | '/_authenticated/admin/hierarchy'
+    | '/_authenticated/admin/predefined'
+    | '/_authenticated/admin/users'
     | '/_authenticated/tasks/$id'
     | '/_authenticated/tasks/new'
     | '/_authenticated/tasks/'
@@ -202,6 +240,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTasksIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/admin/users': {
+      id: '/_authenticated/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/predefined': {
+      id: '/_authenticated/admin/predefined'
+      path: '/admin/predefined'
+      fullPath: '/admin/predefined'
+      preLoaderRoute: typeof AuthenticatedAdminPredefinedRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/hierarchy': {
+      id: '/_authenticated/admin/hierarchy'
+      path: '/admin/hierarchy'
+      fullPath: '/admin/hierarchy'
+      preLoaderRoute: typeof AuthenticatedAdminHierarchyRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
@@ -209,6 +268,9 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedTeamRoute: typeof AuthenticatedTeamRoute
+  AuthenticatedAdminHierarchyRoute: typeof AuthenticatedAdminHierarchyRoute
+  AuthenticatedAdminPredefinedRoute: typeof AuthenticatedAdminPredefinedRoute
+  AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedTasksIdRoute: typeof AuthenticatedTasksIdRoute
   AuthenticatedTasksNewRoute: typeof AuthenticatedTasksNewRoute
   AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
@@ -218,6 +280,9 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedTeamRoute: AuthenticatedTeamRoute,
+  AuthenticatedAdminHierarchyRoute: AuthenticatedAdminHierarchyRoute,
+  AuthenticatedAdminPredefinedRoute: AuthenticatedAdminPredefinedRoute,
+  AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedTasksIdRoute: AuthenticatedTasksIdRoute,
   AuthenticatedTasksNewRoute: AuthenticatedTasksNewRoute,
   AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,
