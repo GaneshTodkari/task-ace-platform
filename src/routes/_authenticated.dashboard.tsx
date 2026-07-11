@@ -1,21 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useAuth, useDBVersion } from "@/lib/auth-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { myTasks, teamTasks, listUsers, tasksFor } from "@/lib/api";
+import {
+  myAssignments,
+  teamAssignments,
+  listUsers,
+  pendingReviewsFor,
+  pendingExtensionsFor,
+  runDueChecks,
+} from "@/lib/api";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
-import { format, isBefore, addHours } from "date-fns";
-import { AlertTriangle, Clock, ListTodo, CheckCircle2, Users, BookMarked, Network } from "lucide-react";
+import { format, differenceInCalendarDays } from "date-fns";
+import { AlertTriangle, Clock, ListTodo, CheckCircle2, Users, BookMarked, Network, FolderKanban, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getDescendants } from "@/lib/hierarchy";
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
+  Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -25,6 +26,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 function Dashboard() {
   const { user } = useAuth();
   useDBVersion();
+  useEffect(() => { runDueChecks(); }, []);
   if (!user) return null;
   if (user.role === "admin") return <AdminDashboard />;
   return <TaskDashboard />;
@@ -37,7 +39,7 @@ function AdminDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Admin overview</h1>
-        <p className="text-muted-foreground">Manage users, hierarchy and the predefined task library.</p>
+        <p className="text-muted-foreground">Manage departments, projects, users and the predefined task library.</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard icon={Users} label="Active users" value={active} />
@@ -45,9 +47,11 @@ function AdminDashboard() {
         <StatCard icon={BookMarked} label="Predefined tasks" value={undefined} hint="See library" />
       </div>
       <div className="grid gap-4 md:grid-cols-3">
+        <AdminLink to="/admin/departments" title="Departments" desc="Create, edit, deactivate." icon={Building2} />
+        <AdminLink to="/admin/projects" title="Projects" desc="Manage projects by department." icon={FolderKanban} />
         <AdminLink to="/admin/users" title="Users" desc="Create, edit, deactivate." icon={Users} />
         <AdminLink to="/admin/hierarchy" title="Hierarchy" desc="Define reporting tree." icon={Network} />
-        <AdminLink to="/admin/predefined" title="Predefined tasks" desc="Library by department." icon={BookMarked} />
+        <AdminLink to="/admin/predefined" title="Predefined tasks" desc="Library by project." icon={BookMarked} />
       </div>
     </div>
   );
@@ -90,27 +94,31 @@ function StatCard({ icon: Icon, label, value, hint }: any) {
 function TaskDashboard() {
   const { user } = useAuth();
   if (!user) return null;
-  const mine = myTasks(user);
-  const visible = tasksFor(user);
-  const team = (user.role === "manager" || user.role === "team_lead") ? teamTasks(user) : [];
+  const mine = myAssignments(user);
+  const team = (user.role === "manager" || user.role === "team_lead") ? teamAssignments(user) : [];
+  const reviews = (user.role === "manager" || user.role === "team_lead") ? pendingReviewsFor(user) : [];
+  const extensions = (user.role === "manager" || user.role === "team_lead") ? pendingExtensionsFor(user) : [];
 
-  const now = new Date();
-  const soon = addHours(now, 24);
-  const overdue = mine.filter((t) => t.status !== "completed" && isBefore(new Date(t.deadline), now));
-  const dueSoon = mine.filter(
-    (t) => t.status !== "completed" && !isBefore(new Date(t.deadline), now) && isBefore(new Date(t.deadline), soon),
-  );
-  const completed = mine.filter((t) => t.status === "completed").length;
+  const today = new Date();
+  const open = mine.filter((x) => x.assignment.status !== "closed");
+  const overdue = open.filter((x) => new Date(x.task.deadline) < today);
+  const dueSoon = open.filter((x) => {
+    const d = differenceInCalendarDays(new Date(x.task.deadline), today);
+    return d >= 0 && d <= 1;
+  });
+  const closed = mine.filter((x) => x.assignment.status === "closed").length;
 
-  const descendants = getDescendants(listUsers(), user.id);
+  const users = listUsers();
+  const descendants = getDescendants(users, user.id);
   const workload = descendants.map((u) => {
-    const ts = visible.filter((t) => t.assigneeIds.includes(u.id));
+    const ts = team.filter((x) => x.assignment.assigneeId === u.id);
     return {
       name: u.fullName.split(" ")[0],
-      "Not started": ts.filter((t) => t.status === "not_started").length,
-      "In progress": ts.filter((t) => t.status === "in_progress").length,
-      "On hold": ts.filter((t) => t.status === "on_hold").length,
-      Completed: ts.filter((t) => t.status === "completed").length,
+      "Not started": ts.filter((x) => x.assignment.status === "not_started").length,
+      "In progress": ts.filter((x) => x.assignment.status === "in_progress").length,
+      "On hold": ts.filter((x) => x.assignment.status === "on_hold").length,
+      "In review": ts.filter((x) => x.assignment.status === "submitted_for_review").length,
+      Closed: ts.filter((x) => x.assignment.status === "closed").length,
     };
   });
 
@@ -121,50 +129,90 @@ function TaskDashboard() {
           <h1 className="text-2xl font-semibold tracking-tight">Welcome, {user.fullName.split(" ")[0]}</h1>
           <p className="text-muted-foreground capitalize">{user.role.replace("_", " ")} · {user.department}</p>
         </div>
-        {(user.role === "manager" || user.role === "team_lead") && (
-          <Button asChild>
-            <Link to="/tasks/new">Create task</Link>
-          </Button>
-        )}
+        <Button asChild>
+          <Link to="/tasks/new">Create task</Link>
+        </Button>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={ListTodo} label="My tasks" value={mine.length} />
         <StatCard icon={AlertTriangle} label="Overdue" value={overdue.length} />
-        <StatCard icon={Clock} label="Due in 24h" value={dueSoon.length} />
-        <StatCard icon={CheckCircle2} label="Completed" value={completed} />
+        <StatCard icon={Clock} label="Due today/tomorrow" value={dueSoon.length} />
+        <StatCard icon={CheckCircle2} label="Closed" value={closed} />
       </div>
+
+      {(user.role === "manager" || user.role === "team_lead") && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Reviews</CardTitle>
+              <CardDescription>Assignments submitted for your review.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {reviews.length === 0 && <p className="text-sm text-muted-foreground">Nothing to review.</p>}
+              {reviews.map(({ task, assignment }) => (
+                <Link key={assignment.id} to="/tasks/$id" params={{ id: task.id }} className="block rounded-md border p-3 hover:bg-accent">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="font-medium">{task.title}</div>
+                    <StatusBadge status={assignment.status} />
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Assignee: {users.find((u) => u.id === assignment.assigneeId)?.fullName}
+                  </div>
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Extension Requests</CardTitle>
+              <CardDescription>Requests awaiting your decision.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {extensions.length === 0 && <p className="text-sm text-muted-foreground">No pending requests.</p>}
+              {extensions.map(({ task, assignment, extensionId }) => {
+                const er = assignment.extensionRequests.find((x) => x.id === extensionId);
+                return (
+                  <Link key={extensionId} to="/tasks/$id" params={{ id: task.id }} className="block rounded-md border p-3 hover:bg-accent">
+                    <div className="font-medium">{task.title}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {users.find((u) => u.id === assignment.assigneeId)?.fullName} · new date {er?.proposedDeadline}
+                    </div>
+                  </Link>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
           <CardTitle>My tasks</CardTitle>
-          <CardDescription>Tasks assigned to you. Overdue items are highlighted.</CardDescription>
+          <CardDescription>Assignments where you are the assignee.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
           {mine.length === 0 && <p className="text-sm text-muted-foreground">No tasks assigned.</p>}
-          {mine.map((t) => {
-            const isOverdue = t.status !== "completed" && isBefore(new Date(t.deadline), now);
-            const isSoon = t.status !== "completed" && !isOverdue && isBefore(new Date(t.deadline), soon);
+          {mine.map(({ task, assignment }) => {
+            const isOverdue = assignment.status !== "closed" && new Date(task.deadline) < today;
             return (
               <Link
-                key={t.id}
+                key={assignment.id}
                 to="/tasks/$id"
-                params={{ id: t.id }}
-                className={`block rounded-md border p-3 hover:bg-accent transition ${
-                  isOverdue ? "border-destructive/50 bg-destructive/5" : isSoon ? "border-warning/50 bg-warning/5" : ""
-                }`}
+                params={{ id: task.id }}
+                className={`block rounded-md border p-3 hover:bg-accent transition ${isOverdue ? "border-destructive/50 bg-destructive/5" : ""}`}
               >
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="font-medium">{t.title}</div>
+                  <div className="font-medium">{task.title}</div>
                   <div className="flex items-center gap-2">
-                    <PriorityBadge priority={t.priority} />
-                    <StatusBadge status={t.status} />
+                    <PriorityBadge priority={task.priority} />
+                    <StatusBadge status={assignment.status} />
                   </div>
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  Due {format(new Date(t.deadline), "PPp")}
+                  Due {format(new Date(task.deadline), "PP")}
                   {isOverdue && <span className="text-destructive ml-2 font-medium">Overdue</span>}
-                  {isSoon && <span className="text-warning ml-2 font-medium">Due soon</span>}
                 </div>
               </Link>
             );
@@ -172,11 +220,11 @@ function TaskDashboard() {
         </CardContent>
       </Card>
 
-      {(user.role === "manager" || user.role === "team_lead") && team.length > 0 && (
+      {(user.role === "manager" || user.role === "team_lead") && workload.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Team workload</CardTitle>
-            <CardDescription>Tasks across your direct & indirect reports.</CardDescription>
+            <CardDescription>Assignments across your direct & indirect reports.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-72">
@@ -190,7 +238,8 @@ function TaskDashboard() {
                   <Bar dataKey="Not started" stackId="a" fill="var(--muted-foreground)" />
                   <Bar dataKey="In progress" stackId="a" fill="var(--info)" />
                   <Bar dataKey="On hold" stackId="a" fill="var(--warning)" />
-                  <Bar dataKey="Completed" stackId="a" fill="var(--success)" />
+                  <Bar dataKey="In review" stackId="a" fill="var(--primary)" />
+                  <Bar dataKey="Closed" stackId="a" fill="var(--success)" />
                 </BarChart>
               </ResponsiveContainer>
             </div>

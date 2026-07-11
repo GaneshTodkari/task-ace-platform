@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuth, useDBVersion } from "@/lib/auth-context";
-import { archivePredefined, listPredefined, upsertPredefined } from "@/lib/api";
+import { archivePredefined, listPredefined, listProjects, projectById, upsertPredefined, departmentById } from "@/lib/api";
 import type { PredefinedTask, Priority } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,8 @@ export const Route = createFileRoute("/_authenticated/admin/predefined")({
 });
 
 const empty = {
-  title: "", category: "", subCategory: "", defaultPriority: "medium" as Priority,
-  department: "Engineering", defaultComments: "", isArchived: false,
+  title: "", projectId: "", defaultPriority: "medium" as Priority,
+  defaultComments: "", isArchived: false,
 };
 
 function PredefinedPage() {
@@ -32,21 +32,21 @@ function PredefinedPage() {
 
   if (!user || user.role !== "admin") return <p className="text-muted-foreground">Admin only.</p>;
   const all = listPredefined(false);
+  const projects = listProjects({ activeOnly: true });
 
   const openCreate = () => { setEditing(null); setForm(empty); setOpen(true); };
   const openEdit = (p: PredefinedTask) => {
     setEditing(p);
     setForm({
-      title: p.title, category: p.category, subCategory: p.subCategory ?? "",
-      defaultPriority: p.defaultPriority, department: p.department,
+      title: p.title, projectId: p.projectId, defaultPriority: p.defaultPriority,
       defaultComments: p.defaultComments ?? "", isArchived: p.isArchived,
     });
     setOpen(true);
   };
 
   const save = () => {
-    if (!form.title || !form.category || !form.department) {
-      toast.error("Title, category and department are required");
+    if (!form.title || !form.projectId) {
+      toast.error("Title and project are required");
       return;
     }
     upsertPredefined({ ...form, id: editing?.id });
@@ -59,7 +59,7 @@ function PredefinedPage() {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Predefined tasks</h1>
-          <p className="text-muted-foreground">Reusable task templates per department. Changes appear instantly in task creation.</p>
+          <p className="text-muted-foreground">Reusable task templates per project.</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -70,9 +70,14 @@ function PredefinedPage() {
             <div className="space-y-3">
               <Field label="Title"><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Category"><Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></Field>
-                <Field label="Sub-category"><Input value={form.subCategory} onChange={(e) => setForm({ ...form, subCategory: e.target.value })} /></Field>
-                <Field label="Department"><Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></Field>
+                <Field label="Project">
+                  <Select value={form.projectId} onValueChange={(v) => setForm({ ...form, projectId: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectContent>
+                      {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
                 <Field label="Default priority">
                   <Select value={form.defaultPriority} onValueChange={(v) => setForm({ ...form, defaultPriority: v as Priority })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -102,33 +107,37 @@ function PredefinedPage() {
               <thead>
                 <tr className="text-left text-muted-foreground border-b">
                   <th className="py-2 pr-3">Title</th>
+                  <th className="py-2 pr-3">Project</th>
                   <th className="py-2 pr-3">Department</th>
-                  <th className="py-2 pr-3">Category</th>
                   <th className="py-2 pr-3">Priority</th>
                   <th className="py-2 pr-3">Status</th>
                   <th className="py-2 pr-3"></th>
                 </tr>
               </thead>
               <tbody>
-                {all.map((p) => (
-                  <tr key={p.id} className="border-b last:border-0">
-                    <td className="py-2 pr-3 font-medium">{p.title}</td>
-                    <td className="py-2 pr-3">{p.department}</td>
-                    <td className="py-2 pr-3">{p.category}{p.subCategory ? ` · ${p.subCategory}` : ""}</td>
-                    <td className="py-2 pr-3 capitalize">{p.defaultPriority}</td>
-                    <td className="py-2 pr-3">
-                      {p.isArchived ? <Badge variant="outline">Archived</Badge> : <Badge variant="secondary">Active</Badge>}
-                    </td>
-                    <td className="py-2 pr-3">
-                      <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" onClick={() => openEdit(p)}><Pencil className="size-4" /></Button>
-                        <Button size="sm" variant="outline" onClick={() => archivePredefined(p.id, !p.isArchived)}>
-                          {p.isArchived ? "Restore" : "Archive"}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {all.map((p) => {
+                  const proj = projectById(p.projectId);
+                  const dep = departmentById(proj?.departmentId);
+                  return (
+                    <tr key={p.id} className="border-b last:border-0">
+                      <td className="py-2 pr-3 font-medium">{p.title}</td>
+                      <td className="py-2 pr-3">{proj?.name ?? "—"}</td>
+                      <td className="py-2 pr-3">{dep?.name ?? "—"}</td>
+                      <td className="py-2 pr-3 capitalize">{p.defaultPriority}</td>
+                      <td className="py-2 pr-3">
+                        {p.isArchived ? <Badge variant="outline">Archived</Badge> : <Badge variant="secondary">Active</Badge>}
+                      </td>
+                      <td className="py-2 pr-3">
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" onClick={() => openEdit(p)}><Pencil className="size-4" /></Button>
+                          <Button size="sm" variant="outline" onClick={() => archivePredefined(p.id, !p.isArchived)}>
+                            {p.isArchived ? "Restore" : "Archive"}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

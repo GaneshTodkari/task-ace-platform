@@ -5,7 +5,8 @@ const statusMap: Record<TaskStatus, { label: string; cls: string }> = {
   not_started: { label: "Not Started", cls: "bg-muted text-muted-foreground" },
   in_progress: { label: "In Progress", cls: "bg-info/15 text-info" },
   on_hold: { label: "On Hold", cls: "bg-warning/15 text-warning" },
-  completed: { label: "Completed", cls: "bg-success/15 text-success" },
+  submitted_for_review: { label: "Submitted for Review", cls: "bg-primary/15 text-primary" },
+  closed: { label: "Closed", cls: "bg-success/15 text-success" },
 };
 
 const priorityMap: Record<Priority, { label: string; cls: string }> = {

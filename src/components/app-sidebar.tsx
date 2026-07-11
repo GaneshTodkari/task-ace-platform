@@ -9,6 +9,8 @@ import {
   PlusCircle,
   LogOut,
   CheckSquare,
+  Building2,
+  FolderKanban,
 } from "lucide-react";
 import {
   Sidebar,
@@ -42,6 +44,7 @@ export function AppSidebar() {
           ...(role === "manager" || role === "team_lead"
             ? [{ title: "Team", url: "/team", icon: Users }]
             : []),
+          ...(role === "manager" ? [{ title: "Projects", url: "/admin/projects", icon: FolderKanban }] : []),
           { title: "Notifications", url: "/notifications", icon: Bell },
         ];
 
@@ -49,6 +52,8 @@ export function AppSidebar() {
     role === "admin"
       ? [
           { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+          { title: "Departments", url: "/admin/departments", icon: Building2 },
+          { title: "Projects", url: "/admin/projects", icon: FolderKanban },
           { title: "Users", url: "/admin/users", icon: Users },
           { title: "Hierarchy", url: "/admin/hierarchy", icon: Network },
           { title: "Predefined Tasks", url: "/admin/predefined", icon: BookMarked },
@@ -56,7 +61,7 @@ export function AppSidebar() {
       : [];
 
   const items = [...taskItems, ...adminItems];
-  const canCreate = role === "manager" || role === "team_lead";
+  const canCreate = role !== "admin";
 
   return (
     <Sidebar collapsible="icon">
