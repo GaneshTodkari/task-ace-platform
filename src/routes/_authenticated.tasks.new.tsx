@@ -1,38 +1,44 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AssigneePicker } from "@/components/assignee-picker";
 import { PriorityBadge } from "@/components/badges";
 import {
   listPredefined,
   createTask,
-  listUsers,
   listProjects,
   departmentByName,
   projectById,
   assignedByOptions,
+  isFileAllowed,
 } from "@/lib/api";
-import type { Priority, RecurrencePattern } from "@/lib/types";
+import type { Priority, RecurrencePattern, TaskType } from "@/lib/types";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Upload, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Upload, X, Repeat, ClipboardList } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/tasks/new")({
   component: NewTask,
 });
 
+type Step = "type" | "form";
+
 function NewTask() {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const [step, setStep] = useState<Step>("type");
+  const [taskType, setTaskType] = useState<TaskType>("one_time");
+  // one-time only
   const [mode, setMode] = useState<"predefined" | "manual">("manual");
   const [predefinedId, setPredefinedId] = useState<string>("");
+
   const [projectId, setProjectId] = useState<string>("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -43,7 +49,6 @@ function NewTask() {
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [comments, setComments] = useState("");
   const [files, setFiles] = useState<{ fileName: string; dataUrl: string }[]>([]);
-  const [isRecurring, setIsRecurring] = useState(false);
   const [pattern, setPattern] = useState<RecurrencePattern>("weekly");
   const [customDays, setCustomDays] = useState<number>(7);
   const [reminders, setReminders] = useState<{ description: string; remindAt: string }[]>([]);
@@ -63,13 +68,12 @@ function NewTask() {
   const predefined = useMemo(
     () => listPredefined().filter((p) => {
       const proj = projectById(p.projectId);
-      return proj && proj.departmentId === deptObj?.id;
+      return proj && proj.departmentId === deptObj?.id && (projectId ? proj.id === projectId : true);
     }),
-    [deptObj],
+    [deptObj, projectId],
   );
 
   if (!user) return null;
-
   const assignedByOpts = assignedByOptions(user);
 
   const onPickPredefined = (id: string) => {
@@ -77,7 +81,6 @@ function NewTask() {
     const p = predefined.find((x) => x.id === id);
     if (p) {
       setTitle(p.title);
-      setProjectId(p.projectId);
       setPriority(p.defaultPriority);
       setComments(p.defaultComments ?? "");
     }
@@ -86,6 +89,8 @@ function NewTask() {
   const onFileChange = (fs: FileList | null) => {
     if (!fs) return;
     Array.from(fs).forEach((f) => {
+      const check = isFileAllowed(f.name);
+      if (!check.ok) { toast.error(check.error ?? "File not allowed"); return; }
       const reader = new FileReader();
       reader.onload = () => setFiles((cur) => [...cur, { fileName: f.name, dataUrl: String(reader.result) }]);
       reader.readAsDataURL(f);
@@ -119,9 +124,10 @@ function NewTask() {
         assignedBy: selfAssign && user.role !== "manager" ? assignedBy : undefined,
         comments: comments.trim() || undefined,
         attachments: files,
-        isRecurring,
-        recurrencePattern: isRecurring ? pattern : undefined,
-        customRecurrenceDays: isRecurring && pattern === "custom" ? customDays : undefined,
+        taskType,
+        isRecurring: taskType === "recurring",
+        recurrencePattern: taskType === "recurring" ? pattern : undefined,
+        customRecurrenceDays: taskType === "recurring" && pattern === "custom" ? customDays : undefined,
         reminders,
       },
       user,
@@ -130,59 +136,101 @@ function NewTask() {
     navigate({ to: "/tasks" });
   };
 
+  if (step === "type") {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div>
+          <Button variant="ghost" size="sm" asChild className="-ml-2">
+            <Link to="/tasks"><ArrowLeft className="size-4 mr-1" /> Back to tasks</Link>
+          </Button>
+          <h1 className="text-2xl font-semibold tracking-tight mt-2">Create a task</h1>
+          <p className="text-muted-foreground">Choose the task type to begin.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => { setTaskType("one_time"); setStep("form"); }}
+            className="group text-left rounded-lg border bg-card p-6 hover:border-primary hover:shadow-sm transition"
+          >
+            <div className="size-10 rounded-md bg-primary/10 text-primary flex items-center justify-center mb-3">
+              <ClipboardList className="size-5" />
+            </div>
+            <div className="font-medium group-hover:text-primary">One Time Task</div>
+            <div className="text-sm text-muted-foreground mt-1">A task performed once. Optionally start from a predefined template.</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => { setTaskType("recurring"); setMode("manual"); setStep("form"); }}
+            className="group text-left rounded-lg border bg-card p-6 hover:border-primary hover:shadow-sm transition"
+          >
+            <div className="size-10 rounded-md bg-primary/10 text-primary flex items-center justify-center mb-3">
+              <Repeat className="size-5" />
+            </div>
+            <div className="font-medium group-hover:text-primary">Recurring Task</div>
+            <div className="text-sm text-muted-foreground mt-1">Repeats on a pattern. A new instance is generated after each cycle closes.</div>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link to="/tasks"><ArrowLeft className="size-4 mr-1" /> Back to tasks</Link>
+        <Button variant="ghost" size="sm" onClick={() => setStep("type")} className="-ml-2">
+          <ArrowLeft className="size-4 mr-1" /> Change task type
         </Button>
-        <h1 className="text-2xl font-semibold tracking-tight mt-2">Create a task</h1>
-        <p className="text-muted-foreground">Start from a predefined template or enter details manually.</p>
+        <h1 className="text-2xl font-semibold tracking-tight mt-2">
+          New {taskType === "recurring" ? "Recurring" : "One Time"} Task
+        </h1>
       </div>
 
-      <Tabs value={mode} onValueChange={(v) => setMode(v as any)}>
-        <TabsList>
-          <TabsTrigger value="predefined">Predefined</TabsTrigger>
-          <TabsTrigger value="manual">Manual entry</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="predefined" className="pt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pick from library</CardTitle>
-              <CardDescription>Templates for your department's projects.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Select value={predefinedId} onValueChange={onPickPredefined}>
-                <SelectTrigger><SelectValue placeholder="Choose a predefined task" /></SelectTrigger>
-                <SelectContent>
-                  {predefined.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.title} <span className="text-muted-foreground">· {projectById(p.projectId)?.name}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="manual" />
-      </Tabs>
+      {taskType === "one_time" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Sub-type</CardTitle>
+            <CardDescription>Start from a predefined template or enter details manually.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <Button variant={mode === "predefined" ? "default" : "outline"} size="sm" onClick={() => setMode("predefined")}>Predefined Task</Button>
+              <Button variant={mode === "manual" ? "default" : "outline"} size="sm" onClick={() => setMode("manual")}>Manual Task</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader><CardTitle>Task details</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <Field label="Department">
-            <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">{dept} <span className="text-xs text-muted-foreground">(auto-filled)</span></div>
+            <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              {dept} <span className="text-xs text-muted-foreground">(auto-filled)</span>
+            </div>
           </Field>
+
           <Field label="Project *">
-            <Select value={projectId} onValueChange={setProjectId}>
+            <Select value={projectId} onValueChange={(v) => { setProjectId(v); setPredefinedId(""); }}>
               <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
               <SelectContent>
                 {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </Field>
+
+          {taskType === "one_time" && mode === "predefined" && projectId && (
+            <Field label="Predefined Task">
+              <Select value={predefinedId} onValueChange={onPickPredefined}>
+                <SelectTrigger><SelectValue placeholder="Choose a predefined task" /></SelectTrigger>
+                <SelectContent>
+                  {predefined.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
+
           <Field label="Title *">
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />
           </Field>
@@ -204,6 +252,30 @@ function NewTask() {
           <Field label="Description">
             <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
           </Field>
+
+          {taskType === "recurring" && (
+            <div className="rounded-md border p-3 space-y-3">
+              <div className="text-sm font-medium">Recurrence Pattern *</div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Pattern">
+                  <Select value={pattern} onValueChange={(v) => setPattern(v as RecurrencePattern)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="custom">Custom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+                {pattern === "custom" && (
+                  <Field label="Every N days">
+                    <Input type="number" min={1} value={customDays} onChange={(e) => setCustomDays(Number(e.target.value))} />
+                  </Field>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="rounded-md border p-3 space-y-3">
             <div className="flex items-center justify-between">
@@ -232,36 +304,6 @@ function NewTask() {
               <AssigneePicker selected={assigneeIds} onChange={setAssigneeIds} />
             </Field>
           )}
-
-          <div className="rounded-md border p-3 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium">Recurring task</div>
-                <div className="text-xs text-muted-foreground">Auto-create the next instance when closed.</div>
-              </div>
-              <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
-            </div>
-            {isRecurring && (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Pattern">
-                  <Select value={pattern} onValueChange={(v) => setPattern(v as RecurrencePattern)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="custom">Custom</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-                {pattern === "custom" && (
-                  <Field label="Every N days">
-                    <Input type="number" min={1} value={customDays} onChange={(e) => setCustomDays(Number(e.target.value))} />
-                  </Field>
-                )}
-              </div>
-            )}
-          </div>
 
           <div className="rounded-md border p-3 space-y-3">
             <div className="text-sm font-medium">Reminders</div>
