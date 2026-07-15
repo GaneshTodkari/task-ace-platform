@@ -116,6 +116,7 @@ const seed = (): DB => {
         createdBy: "u_lead",
         createdAt: iso(addDays(now, -3)),
         updatedAt: iso(),
+        taskType: "one_time",
         assignments: [
           {
             id: "as_t3_rep1",
