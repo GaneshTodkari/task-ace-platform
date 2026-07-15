@@ -2,11 +2,12 @@ export type Role = "admin" | "manager" | "team_lead" | "reportee";
 
 export type Priority = "high" | "medium" | "low";
 export type TaskStatus =
-  | "not_started"
+  | "yet_to_start"
   | "in_progress"
   | "on_hold"
   | "submitted_for_review"
   | "closed";
+export type TaskType = "one_time" | "recurring";
 
 export type RecurrencePattern = "daily" | "weekly" | "monthly" | "custom";
 
