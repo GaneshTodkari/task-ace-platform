@@ -2,11 +2,12 @@ export type Role = "admin" | "manager" | "team_lead" | "reportee";
 
 export type Priority = "high" | "medium" | "low";
 export type TaskStatus =
-  | "not_started"
+  | "yet_to_start"
   | "in_progress"
   | "on_hold"
   | "submitted_for_review"
   | "closed";
+export type TaskType = "one_time" | "recurring";
 
 export type RecurrencePattern = "daily" | "weekly" | "monthly" | "custom";
 
@@ -122,11 +123,13 @@ export interface Task {
   updatedAt: string;
   assignments: TaskAssignment[];
   reminders: ReminderItem[];
+  taskType: TaskType;
   isRecurring?: boolean;
   recurrencePattern?: RecurrencePattern;
   customRecurrenceDays?: number;
   parentRecurrenceId?: string;
-  isSelfAssignedManager?: boolean; // convenience flag
+  isSelfAssigned?: boolean; // any role can self-assign
+  recurrenceDisabled?: boolean; // manager/TL can stop recurrence chain
 }
 
 export interface Notification {
@@ -136,7 +139,9 @@ export interface Notification {
     | "assigned"
     | "modified"
     | "submitted_for_review"
+    | "sent_back"
     | "closed"
+    | "auto_closed"
     | "extension_requested"
     | "extension_accepted"
     | "extension_rejected"
@@ -149,3 +154,4 @@ export interface Notification {
   read: boolean;
   createdAt: string;
 }
+

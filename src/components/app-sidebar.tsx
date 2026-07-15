@@ -44,7 +44,10 @@ export function AppSidebar() {
           ...(role === "manager" || role === "team_lead"
             ? [{ title: "Team", url: "/team", icon: Users }]
             : []),
-          ...(role === "manager" ? [{ title: "Projects", url: "/admin/projects", icon: FolderKanban }] : []),
+          ...(role === "manager" ? [
+            { title: "Projects", url: "/admin/projects", icon: FolderKanban },
+            { title: "Predefined Tasks", url: "/admin/predefined", icon: BookMarked },
+          ] : []),
           { title: "Notifications", url: "/notifications", icon: Bell },
         ];
 
