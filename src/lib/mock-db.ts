@@ -7,7 +7,7 @@ import type {
   Project,
 } from "./types";
 
-const KEY = "tms_db_v2";
+const KEY = "tms_db_v3";
 
 export interface DB {
   departments: Department[];
@@ -68,6 +68,7 @@ const seed = (): DB => {
         createdBy: "u_mgr",
         createdAt: iso(addDays(now, -1)),
         updatedAt: iso(),
+        taskType: "one_time",
         assignments: [
           {
             id: "as_t1_rep1",
@@ -91,11 +92,12 @@ const seed = (): DB => {
         createdBy: "u_mgr",
         createdAt: iso(),
         updatedAt: iso(),
+        taskType: "one_time",
         assignments: [
           {
             id: "as_t2_lead",
             assigneeId: "u_lead",
-            status: "not_started",
+            status: "yet_to_start",
             comments: [],
             attachments: [],
             activity: [{ id: "a2", userId: "u_mgr", action: "created", createdAt: iso() }],
