@@ -32,7 +32,7 @@ export function AssigneePicker({
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
         <Input
-          placeholder="Search by name or employee ID…"
+          placeholder="Search by name…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           className="pl-9"
@@ -69,7 +69,7 @@ export function AssigneePicker({
                       <span className="flex flex-col items-start">
                         <span className="text-sm font-medium">{u.fullName}</span>
                         <span className="text-xs text-muted-foreground">
-                          {u.employeeId} · {u.role.replace("_", " ")} · {u.department}
+                          {u.role.replace("_", " ")} · {u.department}
                         </span>
                       </span>
                       {active && <Check className="size-4 text-primary" />}
