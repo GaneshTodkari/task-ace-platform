@@ -36,7 +36,7 @@ function TeamPage() {
         const ts = team.filter((x) => x.assignment.assigneeId === u.id);
         return {
           name: u.fullName.split(" ")[0],
-          "Not started": ts.filter((x) => x.assignment.status === "not_started").length,
+          "Yet to Start": ts.filter((x) => x.assignment.status === "yet_to_start").length,
           "In progress": ts.filter((x) => x.assignment.status === "in_progress").length,
           "On hold": ts.filter((x) => x.assignment.status === "on_hold").length,
           "In review": ts.filter((x) => x.assignment.status === "submitted_for_review").length,
@@ -69,7 +69,7 @@ function TeamPage() {
                 <YAxis allowDecimals={false} stroke="var(--muted-foreground)" fontSize={12} />
                 <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8 }} />
                 <Legend />
-                <Bar dataKey="Not started" stackId="a" fill="var(--muted-foreground)" />
+                <Bar dataKey="Yet to Start" stackId="a" fill="var(--muted-foreground)" />
                 <Bar dataKey="In progress" stackId="a" fill="var(--info)" />
                 <Bar dataKey="On hold" stackId="a" fill="var(--warning)" />
                 <Bar dataKey="In review" stackId="a" fill="var(--primary)" />
