@@ -177,7 +177,7 @@ function AssignmentPanel({ task, assignment }: { task: Task; assignment: TaskAss
   const isAssignee = assignment.assigneeId === user.id;
   const reviewer = canReviewClose(user, task, assignment);
   const isClosed = assignment.status === "closed";
-  const skipRating = task.isSelfAssignedManager && assignment.assigneeId === task.createdBy;
+  const skipRating = !!task.isSelfAssigned;
 
   const setStatus = (next: TaskStatus, extra?: { onHoldReason?: string; reviewComments?: string; rating?: number }) => {
     const res = updateAssignmentStatus(task.id, assignment.id, next, user, extra);
