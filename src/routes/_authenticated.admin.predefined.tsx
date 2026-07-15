@@ -1,7 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth, useDBVersion } from "@/lib/auth-context";
-import { archivePredefined, listPredefined, listProjects, projectById, upsertPredefined, departmentById } from "@/lib/api";
+import {
+  archivePredefined,
+  listPredefined,
+  listProjects,
+  projectById,
+  upsertPredefined,
+  departmentById,
+  canManagePredefined,
+  canDeleteOrArchivePredefined,
+} from "@/lib/api";
 import type { PredefinedTask, Priority } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,12 +39,31 @@ function PredefinedPage() {
   const [editing, setEditing] = useState<PredefinedTask | null>(null);
   const [form, setForm] = useState(empty);
 
-  if (!user || user.role !== "admin") return <p className="text-muted-foreground">Admin only.</p>;
-  const all = listPredefined(false);
-  const projects = listProjects({ activeOnly: true });
+  if (!user || (user.role !== "admin" && user.role !== "manager")) {
+    return <p className="text-muted-foreground">Not permitted.</p>;
+  }
 
-  const openCreate = () => { setEditing(null); setForm(empty); setOpen(true); };
+  const isAdmin = user.role === "admin";
+  const canDelete = canDeleteOrArchivePredefined(user);
+
+  // Scope: admin sees all, manager sees own dept only
+  const allProjects = listProjects({ activeOnly: true });
+  const projects = useMemo(
+    () => isAdmin ? allProjects : allProjects.filter((p) => p.departmentId === user.departmentId),
+    [allProjects, isAdmin, user.departmentId],
+  );
+  const all = useMemo(
+    () => listPredefined(false).filter((p) => {
+      if (isAdmin) return true;
+      const proj = projectById(p.projectId);
+      return !!proj && proj.departmentId === user.departmentId;
+    }),
+    [isAdmin, user.departmentId],
+  );
+
+  const openCreate = () => { setEditing(null); setForm({ ...empty }); setOpen(true); };
   const openEdit = (p: PredefinedTask) => {
+    if (!canManagePredefined(user, p)) { toast.error("Not permitted"); return; }
     setEditing(p);
     setForm({
       title: p.title, projectId: p.projectId, defaultPriority: p.defaultPriority,
@@ -49,6 +77,14 @@ function PredefinedPage() {
       toast.error("Title and project are required");
       return;
     }
+    // Manager: project must be in own department
+    if (!isAdmin) {
+      const proj = projectById(form.projectId);
+      if (!proj || proj.departmentId !== user.departmentId) {
+        toast.error("Project must be in your department");
+        return;
+      }
+    }
     upsertPredefined({ ...form, id: editing?.id });
     toast.success(editing ? "Updated" : "Added");
     setOpen(false);
@@ -59,7 +95,9 @@ function PredefinedPage() {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Predefined tasks</h1>
-          <p className="text-muted-foreground">Reusable task templates per project.</p>
+          <p className="text-muted-foreground">
+            Reusable task templates per project{!isAdmin && ` · ${user.department}`}.
+          </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -130,9 +168,11 @@ function PredefinedPage() {
                       <td className="py-2 pr-3">
                         <div className="flex gap-1">
                           <Button size="icon" variant="ghost" onClick={() => openEdit(p)}><Pencil className="size-4" /></Button>
-                          <Button size="sm" variant="outline" onClick={() => archivePredefined(p.id, !p.isArchived)}>
-                            {p.isArchived ? "Restore" : "Archive"}
-                          </Button>
+                          {canDelete && (
+                            <Button size="sm" variant="outline" onClick={() => archivePredefined(p.id, !p.isArchived)}>
+                              {p.isArchived ? "Restore" : "Archive"}
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>

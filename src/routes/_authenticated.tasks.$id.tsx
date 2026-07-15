@@ -14,6 +14,10 @@ import {
   addReminder,
   deleteReminder,
   projectById,
+  sendBack,
+  markRecurringCompleted,
+  setRecurrenceDisabled,
+  isFileAllowed,
 } from "@/lib/api";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
 import { RatingStars } from "@/components/rating-stars";
@@ -23,8 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Paperclip, Upload, Trash2, Plus, Bell } from "lucide-react";
 import { format } from "date-fns";
@@ -56,14 +59,13 @@ function TaskDetail() {
   const userById = (id: string) => users.find((u) => u.id === id);
   const project = projectById(task.projectId);
 
-  // decide which assignments to expose to this user
   const isCreator = task.createdBy === user.id;
-  const isReviewer = task.assignments.some((a) => canReviewClose(user, task, a));
   const visibleAssignments = task.assignments.filter((a) =>
     a.assigneeId === user.id || isCreator || canReviewClose(user, task, a),
   );
 
   const [activeId, setActiveId] = useState<string>(visibleAssignments[0]?.id ?? "");
+  const isMgrOrTL = user.role === "manager" || user.role === "team_lead";
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -76,11 +78,29 @@ function TaskDetail() {
             <h1 className="text-2xl font-semibold tracking-tight">{task.title}</h1>
             <p className="text-muted-foreground text-sm mt-1">
               {project?.name ?? "—"} · {task.department} · Due {format(new Date(task.deadline), "PP")}
-              {task.isRecurring && <Badge variant="outline" className="ml-2">Recurring · {task.recurrencePattern}</Badge>}
+              {task.isRecurring && (
+                <Badge variant="outline" className="ml-2">
+                  Recurring · {task.recurrencePattern}
+                  {task.recurrenceDisabled ? " · stopped" : ""}
+                </Badge>
+              )}
+              {task.isSelfAssigned && <Badge variant="outline" className="ml-2">Self-assigned</Badge>}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <PriorityBadge priority={task.priority} />
+            {task.isRecurring && isMgrOrTL && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setRecurrenceDisabled(task.id, !task.recurrenceDisabled, user);
+                  toast.success(task.recurrenceDisabled ? "Recurrence resumed" : "Recurrence stopped");
+                }}
+              >
+                {task.recurrenceDisabled ? "Resume recurrence" : "Stop recurrence"}
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -170,6 +190,10 @@ function AssignmentPanel({ task, assignment }: { task: Task; assignment: TaskAss
   const [extDate, setExtDate] = useState("");
   const [decideOpen, setDecideOpen] = useState<string | null>(null);
   const [decideComments, setDecideComments] = useState("");
+  const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false);
+  const [submitAction, setSubmitAction] = useState<"submit" | "mark_completed">("submit");
+  const [sendBackOpen, setSendBackOpen] = useState(false);
+  const [sendBackComments, setSendBackComments] = useState("");
 
   if (!user) return null;
   const users = listUsers();
@@ -178,8 +202,12 @@ function AssignmentPanel({ task, assignment }: { task: Task; assignment: TaskAss
   const reviewer = canReviewClose(user, task, assignment);
   const isClosed = assignment.status === "closed";
   const skipRating = !!task.isSelfAssigned;
+  const isSubmitted = assignment.status === "submitted_for_review";
+  const inProgress = assignment.status === "in_progress";
+  const yetToStart = assignment.status === "yet_to_start";
+  const onHold = assignment.status === "on_hold";
 
-  const setStatus = (next: TaskStatus, extra?: { onHoldReason?: string; reviewComments?: string; rating?: number }) => {
+  const doStatus = (next: TaskStatus, extra?: { onHoldReason?: string; reviewComments?: string; rating?: number }) => {
     const res = updateAssignmentStatus(task.id, assignment.id, next, user, extra);
     if (!res.ok) toast.error(res.error ?? "Not permitted");
     else toast.success("Status updated");
@@ -194,13 +222,47 @@ function AssignmentPanel({ task, assignment }: { task: Task; assignment: TaskAss
   const onUpload = (fs: FileList | null) => {
     if (!fs || isClosed) return;
     Array.from(fs).forEach((f) => {
+      const check = isFileAllowed(f.name);
+      if (!check.ok) { toast.error(check.error ?? "File not allowed"); return; }
       const r = new FileReader();
-      r.onload = () => addAttachment(task.id, assignment.id, { fileName: f.name, dataUrl: String(r.result) }, user);
+      r.onload = () => {
+        const res = addAttachment(task.id, assignment.id, { fileName: f.name, dataUrl: String(r.result) }, user);
+        if (!res.ok) toast.error(res.error ?? "Upload failed");
+      };
       r.readAsDataURL(f);
     });
   };
 
   const pendingExt = assignment.extensionRequests.filter((e) => e.status === "pending");
+
+  const trySubmit = () => {
+    if (assignment.attachments.length === 0) {
+      toast.error("Please upload at least one work attachment before submitting for review.");
+      return;
+    }
+    setSubmitAction("submit");
+    setSubmitConfirmOpen(true);
+  };
+
+  const tryMarkCompleted = () => {
+    if (assignment.attachments.length === 0) {
+      toast.error("Please upload at least one work attachment before submitting for review.");
+      return;
+    }
+    setSubmitAction("mark_completed");
+    setSubmitConfirmOpen(true);
+  };
+
+  const confirmSubmit = () => {
+    setSubmitConfirmOpen(false);
+    if (submitAction === "mark_completed") {
+      const res = markRecurringCompleted(task.id, assignment.id, user);
+      if (!res.ok) toast.error(res.error ?? "Not permitted");
+      else toast.success(task.isSelfAssigned ? "Task closed" : "Submitted for review");
+    } else {
+      doStatus("submitted_for_review");
+    }
+  };
 
   return (
     <div className="grid gap-6 md:grid-cols-3">
@@ -209,29 +271,45 @@ function AssignmentPanel({ task, assignment }: { task: Task; assignment: TaskAss
           <CardHeader>
             <CardTitle>Status</CardTitle>
             {isClosed && <CardDescription>This assignment is closed and read-only.</CardDescription>}
+            {isSubmitted && <CardDescription>Locked. Only Manager/Team Lead can Close or Send Back.</CardDescription>}
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
               <StatusBadge status={assignment.status} />
-              {assignment.status === "on_hold" && assignment.onHoldReason && (
+              {onHold && assignment.onHoldReason && (
                 <span className="text-xs text-muted-foreground">Reason: {assignment.onHoldReason}</span>
               )}
             </div>
-            {!isClosed && isAssignee && (
+
+            {!isClosed && isAssignee && !isSubmitted && (
               <div className="flex flex-wrap gap-2">
-                {assignment.status !== "in_progress" && (
-                  <Button size="sm" onClick={() => setStatus("in_progress")}>Start / Resume</Button>
+                {yetToStart && (
+                  <Button size="sm" onClick={() => doStatus("in_progress")}>Start</Button>
                 )}
-                <Button size="sm" variant="outline" onClick={() => setHoldOpen(true)}>Put On Hold</Button>
-                {assignment.status !== "submitted_for_review" && (
-                  <Button size="sm" onClick={() => setStatus("submitted_for_review")}>Submit for Review</Button>
+                {onHold && (
+                  <Button size="sm" onClick={() => doStatus("in_progress")}>Resume</Button>
                 )}
-                <Button size="sm" variant="outline" onClick={() => setExtOpen(true)}>Request Extension</Button>
+                {inProgress && (
+                  <Button size="sm" variant="outline" onClick={() => setHoldOpen(true)}>Put On Hold</Button>
+                )}
+                {inProgress && !task.isRecurring && (
+                  <Button size="sm" onClick={trySubmit}>Submit for Review</Button>
+                )}
+                {inProgress && task.isRecurring && (
+                  <Button size="sm" onClick={tryMarkCompleted}>Mark as Completed</Button>
+                )}
+                {(inProgress || onHold) && (
+                  <Button size="sm" variant="outline" onClick={() => setExtOpen(true)}>Request Extension</Button>
+                )}
               </div>
             )}
-            {!isClosed && reviewer && assignment.status === "submitted_for_review" && (
-              <div className="pt-2 border-t">
+
+            {!isClosed && reviewer && isSubmitted && (
+              <div className="pt-2 border-t flex flex-wrap gap-2">
                 <Button size="sm" onClick={() => setCloseOpen(true)}>Review & Close</Button>
+                {!task.isSelfAssigned && (
+                  <Button size="sm" variant="outline" onClick={() => setSendBackOpen(true)}>Send Back</Button>
+                )}
               </div>
             )}
           </CardContent>
@@ -281,7 +359,10 @@ function AssignmentPanel({ task, assignment }: { task: Task; assignment: TaskAss
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Attachments</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Attachments</CardTitle>
+            <CardDescription>At least one attachment is required before submitting for review.</CardDescription>
+          </CardHeader>
           <CardContent className="space-y-3">
             {assignment.attachments.length === 0 && <p className="text-sm text-muted-foreground">No attachments.</p>}
             <ul className="space-y-1.5">
@@ -309,7 +390,7 @@ function AssignmentPanel({ task, assignment }: { task: Task; assignment: TaskAss
                 <li key={a.id} className="flex gap-3">
                   <div className="text-xs text-muted-foreground w-36 shrink-0">{format(new Date(a.createdAt), "PPp")}</div>
                   <div>
-                    <span className="font-medium">{userById(a.userId)?.fullName ?? "Unknown"}</span>{" "}
+                    <span className="font-medium">{userById(a.userId)?.fullName ?? "System"}</span>{" "}
                     <span className="text-muted-foreground">{a.action.replace(/_/g, " ")}</span>
                     {a.details && <span className="text-muted-foreground"> · {a.details}</span>}
                   </div>
@@ -341,7 +422,7 @@ function AssignmentPanel({ task, assignment }: { task: Task; assignment: TaskAss
           </CardContent>
         </Card>
 
-        {assignment.status === "closed" && (
+        {isClosed && (
           <Card>
             <CardHeader><CardTitle>Review</CardTitle></CardHeader>
             <CardContent className="space-y-2 text-sm">
@@ -376,9 +457,49 @@ function AssignmentPanel({ task, assignment }: { task: Task; assignment: TaskAss
             <Button variant="ghost" onClick={() => setHoldOpen(false)}>Cancel</Button>
             <Button onClick={() => {
               if (!holdReason.trim()) { toast.error("Reason required"); return; }
-              setStatus("on_hold", { onHoldReason: holdReason.trim() });
+              doStatus("on_hold", { onHoldReason: holdReason.trim() });
               setHoldOpen(false); setHoldReason("");
             }}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Submit-for-review Confirmation Dialog */}
+      <Dialog open={submitConfirmOpen} onOpenChange={setSubmitConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm submission</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to submit this task for review? This action cannot be undone by you.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setSubmitConfirmOpen(false)}>Cancel</Button>
+            <Button onClick={confirmSubmit}>Confirm</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Back Dialog */}
+      <Dialog open={sendBackOpen} onOpenChange={setSendBackOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send Back</DialogTitle>
+            <DialogDescription>Returns the task to In Progress. Comments are required.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Comments *</Label>
+            <Textarea rows={3} value={sendBackComments} onChange={(e) => setSendBackComments(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setSendBackOpen(false)}>Cancel</Button>
+            <Button onClick={() => {
+              if (!sendBackComments.trim()) { toast.error("Comments required"); return; }
+              const res = sendBack(task.id, assignment.id, sendBackComments.trim(), user);
+              if (!res.ok) { toast.error(res.error ?? "Not permitted"); return; }
+              toast.success("Task sent back");
+              setSendBackOpen(false); setSendBackComments("");
+            }}>Send Back</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -398,14 +519,14 @@ function AssignmentPanel({ task, assignment }: { task: Task; assignment: TaskAss
                 <RatingStars value={rating} onChange={setRating} />
               </div>
             )}
-            {skipRating && <p className="text-xs text-muted-foreground">Self-assigned Manager tasks skip the rating step.</p>}
+            {skipRating && <p className="text-xs text-muted-foreground">Self-assigned tasks skip the rating step.</p>}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCloseOpen(false)}>Cancel</Button>
             <Button onClick={() => {
               if (!reviewComments.trim()) { toast.error("Review comments required"); return; }
               if (!skipRating && (rating < 1 || rating > 5)) { toast.error("Please provide a rating 1–5"); return; }
-              setStatus("closed", { reviewComments: reviewComments.trim(), rating: skipRating ? undefined : rating });
+              doStatus("closed", { reviewComments: reviewComments.trim(), rating: skipRating ? undefined : rating });
               setCloseOpen(false); setReviewComments(""); setRating(0);
             }}>Close task</Button>
           </DialogFooter>
