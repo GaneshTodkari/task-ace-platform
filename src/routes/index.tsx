@@ -7,5 +7,6 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { user } = useAuth();
-  return <Navigate to={user ? "/dashboard" : "/auth"} />;
+  if (!user) return <Navigate to="/auth" />;
+  return <Navigate to={user.role === "admin" ? "/dashboard" : "/tasks"} />;
 }
