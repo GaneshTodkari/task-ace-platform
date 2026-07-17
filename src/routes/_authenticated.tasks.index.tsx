@@ -173,8 +173,12 @@ function TaskList() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Tasks</h1>
-          <p className="text-muted-foreground">Assignments visible to you within your hierarchy.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {user ? `Welcome, ${user.fullName.split(" ")[0]}` : "Tasks Dashboard"}
+          </h1>
+          <p className="text-muted-foreground">
+            {user ? `${user.role.replace("_", " ")} · ${user.department}` : "Assignments visible to you within your hierarchy."}
+          </p>
         </div>
         <Button asChild><Link to="/tasks/new">Create task</Link></Button>
       </div>
