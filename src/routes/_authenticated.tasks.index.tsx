@@ -199,6 +199,53 @@ function TaskList() {
         ))}
       </div>
 
+      {isMgrOrTLScope && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Reviews</CardTitle>
+              <CardDescription>Assignments submitted for your review.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {reviews.length === 0 && <p className="text-sm text-muted-foreground">Nothing to review.</p>}
+              {reviews.map(({ task, assignment }) => (
+                <Link key={assignment.id} to="/tasks/$id" params={{ id: task.id }} className="block rounded-md border p-3 hover:bg-accent">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="font-medium">{task.title}</div>
+                    <StatusBadge status={assignment.status} />
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Assignee: {users.find((u) => u.id === assignment.assigneeId)?.fullName}
+                  </div>
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Extension Requests</CardTitle>
+              <CardDescription>Requests awaiting your decision.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {extensions.length === 0 && <p className="text-sm text-muted-foreground">No pending requests.</p>}
+              {extensions.map(({ task, assignment, extensionId }) => {
+                const er = assignment.extensionRequests.find((x) => x.id === extensionId);
+                return (
+                  <Link key={extensionId} to="/tasks/$id" params={{ id: task.id }} className="block rounded-md border p-3 hover:bg-accent">
+                    <div className="font-medium">{task.title}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {users.find((u) => u.id === assignment.assigneeId)?.fullName} · new date {er?.proposedDeadline}
+                    </div>
+                  </Link>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+
       <Card>
         <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-3">
