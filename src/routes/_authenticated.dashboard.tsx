@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth, useDBVersion } from "@/lib/auth-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,8 +28,8 @@ function Dashboard() {
   useDBVersion();
   useEffect(() => { runDueChecks(); }, []);
   if (!user) return null;
-  if (user.role === "admin") return <AdminDashboard />;
-  return <TaskDashboard />;
+  if (user.role !== "admin") return <Navigate to="/tasks" />;
+  return <AdminDashboard />;
 }
 
 function AdminDashboard() {

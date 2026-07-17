@@ -1,15 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth, useDBVersion } from "@/lib/auth-context";
-import { tasksFor, listUsers, projectById, pendingReviewsFor, pendingExtensionsFor } from "@/lib/api";
+import { tasksFor, listUsers, projectById, pendingReviewsFor, pendingExtensionsFor, myAssignments, teamAssignments, runDueChecks } from "@/lib/api";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format, differenceInCalendarDays } from "date-fns";
 import { cn } from "@/lib/utils";
+import { getDescendants } from "@/lib/hierarchy";
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { Priority, TaskStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/tasks/")({
@@ -33,6 +35,7 @@ type Filter =
 function TaskList() {
   const { user } = useAuth();
   useDBVersion();
+  useEffect(() => { runDueChecks(); }, []);
   const [filter, setFilter] = useState<Filter>("all");
   const [priorityFilter, setPriorityFilter] = useState<Priority[]>([]);
   const [q, setQ] = useState("");
@@ -42,6 +45,21 @@ function TaskList() {
   const tasks = useMemo(() => (user ? tasksFor(user) : []), [user]);
   const reviews = user && (user.role === "manager" || user.role === "team_lead") ? pendingReviewsFor(user) : [];
   const extensions = user && (user.role === "manager" || user.role === "team_lead") ? pendingExtensionsFor(user) : [];
+  const isMgrOrTLScope = user?.role === "manager" || user?.role === "team_lead";
+  const team = user && isMgrOrTLScope ? teamAssignments(user) : [];
+  const workload = user && isMgrOrTLScope
+    ? getDescendants(users, user.id).map((u) => {
+        const ts = team.filter((x) => x.assignment.assigneeId === u.id);
+        return {
+          name: u.fullName.split(" ")[0],
+          "Yet to Start": ts.filter((x) => x.assignment.status === "yet_to_start").length,
+          "In progress": ts.filter((x) => x.assignment.status === "in_progress").length,
+          "On hold": ts.filter((x) => x.assignment.status === "on_hold").length,
+          "In review": ts.filter((x) => x.assignment.status === "submitted_for_review").length,
+          Closed: ts.filter((x) => x.assignment.status === "closed").length,
+        };
+      })
+    : [];
 
   const rows = useMemo(() => {
     const out: {
@@ -155,8 +173,12 @@ function TaskList() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Tasks</h1>
-          <p className="text-muted-foreground">Assignments visible to you within your hierarchy.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {user ? `Welcome, ${user.fullName.split(" ")[0]}` : "Tasks Dashboard"}
+          </h1>
+          <p className="text-muted-foreground">
+            {user ? `${user.role.replace("_", " ")} · ${user.department}` : "Assignments visible to you within your hierarchy."}
+          </p>
         </div>
         <Button asChild><Link to="/tasks/new">Create task</Link></Button>
       </div>
@@ -176,6 +198,53 @@ function TaskList() {
           </button>
         ))}
       </div>
+
+      {isMgrOrTLScope && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Reviews</CardTitle>
+              <CardDescription>Assignments submitted for your review.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {reviews.length === 0 && <p className="text-sm text-muted-foreground">Nothing to review.</p>}
+              {reviews.map(({ task, assignment }) => (
+                <Link key={assignment.id} to="/tasks/$id" params={{ id: task.id }} className="block rounded-md border p-3 hover:bg-accent">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="font-medium">{task.title}</div>
+                    <StatusBadge status={assignment.status} />
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Assignee: {users.find((u) => u.id === assignment.assigneeId)?.fullName}
+                  </div>
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Extension Requests</CardTitle>
+              <CardDescription>Requests awaiting your decision.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {extensions.length === 0 && <p className="text-sm text-muted-foreground">No pending requests.</p>}
+              {extensions.map(({ task, assignment, extensionId }) => {
+                const er = assignment.extensionRequests.find((x) => x.id === extensionId);
+                return (
+                  <Link key={extensionId} to="/tasks/$id" params={{ id: task.id }} className="block rounded-md border p-3 hover:bg-accent">
+                    <div className="font-medium">{task.title}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {users.find((u) => u.id === assignment.assigneeId)?.fullName} · new date {er?.proposedDeadline}
+                    </div>
+                  </Link>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
 
       <Card>
         <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
@@ -242,6 +311,33 @@ function TaskList() {
           );
         })}
       </div>
+
+      {isMgrOrTLScope && workload.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Team workload</CardTitle>
+            <CardDescription>Assignments across your direct & indirect reports.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={workload}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} />
+                  <YAxis allowDecimals={false} stroke="var(--muted-foreground)" fontSize={12} />
+                  <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8 }} />
+                  <Legend />
+                  <Bar dataKey="Yet to Start" stackId="a" fill="var(--muted-foreground)" />
+                  <Bar dataKey="In progress" stackId="a" fill="var(--info)" />
+                  <Bar dataKey="On hold" stackId="a" fill="var(--warning)" />
+                  <Bar dataKey="In review" stackId="a" fill="var(--primary)" />
+                  <Bar dataKey="Closed" stackId="a" fill="var(--success)" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
