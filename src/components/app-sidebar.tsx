@@ -11,6 +11,7 @@ import {
   CheckSquare,
   Building2,
   FolderKanban,
+  Repeat,
 } from "lucide-react";
 import {
   Sidebar,
@@ -39,8 +40,8 @@ export function AppSidebar() {
     role === "admin"
       ? []
       : [
-          { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-          { title: "Tasks", url: "/tasks", icon: ListTodo },
+          { title: "Tasks Dashboard", url: "/tasks", icon: ListTodo },
+          { title: "Recurring Tasks", url: "/recurring", icon: Repeat },
           ...(role === "manager" || role === "team_lead"
             ? [{ title: "Team", url: "/team", icon: Users }]
             : []),
@@ -54,7 +55,7 @@ export function AppSidebar() {
   const adminItems =
     role === "admin"
       ? [
-          { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+          { title: "Admin Home", url: "/dashboard", icon: LayoutDashboard },
           { title: "Departments", url: "/admin/departments", icon: Building2 },
           { title: "Projects", url: "/admin/projects", icon: FolderKanban },
           { title: "Users", url: "/admin/users", icon: Users },
