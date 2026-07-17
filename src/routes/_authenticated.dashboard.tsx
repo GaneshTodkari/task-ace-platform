@@ -28,8 +28,8 @@ function Dashboard() {
   useDBVersion();
   useEffect(() => { runDueChecks(); }, []);
   if (!user) return null;
-  if (user.role === "admin") return <AdminDashboard />;
-  return <TaskDashboard />;
+  if (user.role !== "admin") return <Navigate to="/tasks" />;
+  return <AdminDashboard />;
 }
 
 function AdminDashboard() {
