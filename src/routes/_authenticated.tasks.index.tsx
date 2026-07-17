@@ -35,6 +35,7 @@ type Filter =
 function TaskList() {
   const { user } = useAuth();
   useDBVersion();
+  useEffect(() => { runDueChecks(); }, []);
   const [filter, setFilter] = useState<Filter>("all");
   const [priorityFilter, setPriorityFilter] = useState<Priority[]>([]);
   const [q, setQ] = useState("");
@@ -44,6 +45,21 @@ function TaskList() {
   const tasks = useMemo(() => (user ? tasksFor(user) : []), [user]);
   const reviews = user && (user.role === "manager" || user.role === "team_lead") ? pendingReviewsFor(user) : [];
   const extensions = user && (user.role === "manager" || user.role === "team_lead") ? pendingExtensionsFor(user) : [];
+  const isMgrOrTLScope = user?.role === "manager" || user?.role === "team_lead";
+  const team = user && isMgrOrTLScope ? teamAssignments(user) : [];
+  const workload = user && isMgrOrTLScope
+    ? getDescendants(users, user.id).map((u) => {
+        const ts = team.filter((x) => x.assignment.assigneeId === u.id);
+        return {
+          name: u.fullName.split(" ")[0],
+          "Yet to Start": ts.filter((x) => x.assignment.status === "yet_to_start").length,
+          "In progress": ts.filter((x) => x.assignment.status === "in_progress").length,
+          "On hold": ts.filter((x) => x.assignment.status === "on_hold").length,
+          "In review": ts.filter((x) => x.assignment.status === "submitted_for_review").length,
+          Closed: ts.filter((x) => x.assignment.status === "closed").length,
+        };
+      })
+    : [];
 
   const rows = useMemo(() => {
     const out: {
