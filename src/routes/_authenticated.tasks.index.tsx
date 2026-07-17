@@ -1,15 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth, useDBVersion } from "@/lib/auth-context";
-import { tasksFor, listUsers, projectById, pendingReviewsFor, pendingExtensionsFor } from "@/lib/api";
+import { tasksFor, listUsers, projectById, pendingReviewsFor, pendingExtensionsFor, myAssignments, teamAssignments, runDueChecks } from "@/lib/api";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format, differenceInCalendarDays } from "date-fns";
 import { cn } from "@/lib/utils";
+import { getDescendants } from "@/lib/hierarchy";
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { Priority, TaskStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/_authenticated/tasks/")({
