@@ -26,6 +26,7 @@ function ProjectsPage() {
   useDBVersion();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Project | null>(null);
+  const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [deptId, setDeptId] = useState("");
   const [filterDept, setFilterDept] = useState<string>("all");
@@ -46,23 +47,30 @@ function ProjectsPage() {
   }, [allProjects, isAdmin, managerDeptId, filterDept]);
 
   const openCreate = () => {
-    setEditing(null); setName("");
+    setEditing(null);
+    setCode("");
+    setName("");
     setDeptId(isAdmin ? (departments[0]?.id ?? "") : managerDeptId);
     setOpen(true);
   };
+
   const openEdit = (p: Project) => {
-    setEditing(p); setName(p.name); setDeptId(p.departmentId); setOpen(true);
+    setEditing(p);
+    setCode(p.id);
+    setName(p.name);
+    setDeptId(p.departmentId);
+    setOpen(true);
   };
 
   const save = () => {
-    if (!name.trim() || !deptId) { toast.error("Name and department required"); return; }
+    if (!code.trim() || !name.trim() || !deptId) { toast.error("Project Code, Name and Department are required"); return; }
     if (!isAdmin && deptId !== managerDeptId) { toast.error("Managers can only manage their department"); return; }
     if (editing) {
       if (!canManageProject(user, editing)) { toast.error("Not permitted"); return; }
       updateProject(editing.id, { name: name.trim(), departmentId: deptId });
       toast.success("Updated");
     } else {
-      createProject({ name: name.trim(), departmentId: deptId });
+      createProject({id: code.trim().toUpperCase(), name: name.trim(), departmentId: deptId,});
       toast.success("Created");
     }
     setOpen(false);
@@ -92,7 +100,24 @@ function ProjectsPage() {
             <DialogContent>
               <DialogHeader><DialogTitle>{editing ? "Edit project" : "New project"}</DialogTitle></DialogHeader>
               <div className="space-y-3">
-                <div className="space-y-1.5"><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
+                <div className="space-y-1.5">
+                  <Label>Project Code</Label>
+                  <Input
+                    placeholder="RAD-PRJ-001"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.toUpperCase())}
+                    disabled={!!editing}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Project Name</Label>
+                  <Input
+                    placeholder="CT Scan"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
                 <div className="space-y-1.5">
                   <Label>Department</Label>
                   <Select value={deptId} onValueChange={setDeptId} disabled={!isAdmin}>
@@ -118,7 +143,8 @@ function ProjectsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-muted-foreground border-b">
-                <th className="py-2 pr-3">Name</th>
+               <th className="py-2 pr-3">Code</th>
+                <th  className="py-2 pr-3">Name</th>
                 <th className="py-2 pr-3">Department</th>
                 <th className="py-2 pr-3">Status</th>
                 <th className="py-2 pr-3"></th>
@@ -127,7 +153,13 @@ function ProjectsPage() {
             <tbody>
               {projects.map((p) => (
                 <tr key={p.id} className="border-b last:border-0">
-                  <td className="py-2 pr-3 font-medium">{p.name}</td>
+                  <td className="py-2 pr-3 font-mono">
+                    {p.id}
+                  </td>
+
+                  <td className="py-2 pr-3 font-medium">
+                    {p.name}
+                  </td>
                   <td className="py-2 pr-3">{departmentById(p.departmentId)?.name ?? "—"}</td>
                   <td className="py-2 pr-3">
                     {p.isArchived ? <Badge variant="outline">Archived</Badge>

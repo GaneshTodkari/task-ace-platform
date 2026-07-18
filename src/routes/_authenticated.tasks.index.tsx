@@ -5,7 +5,21 @@ import { tasksFor, listUsers, projectById } from "@/lib/api";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Check, ChevronsUpDown } from "lucide-react";
+
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format, differenceInCalendarDays } from "date-fns";
@@ -37,6 +51,7 @@ function TaskList() {
   const [priorityFilter, setPriorityFilter] = useState<Priority[]>([]);
   const [q, setQ] = useState("");
   const [employee, setEmployee] = useState<string>("all");
+  const [open, setOpen] = useState(false);
 
   const users = listUsers();
   const tasks = useMemo(() => (user ? tasksFor(user) : []), [user]);
@@ -149,15 +164,67 @@ function TaskList() {
         <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-3">
           <Input placeholder="Search title…" value={q} onChange={(e) => setQ(e.target.value)} />
-          <Select value={employee} onValueChange={setEmployee}>
-            <SelectTrigger><SelectValue placeholder="Employee" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All employees</SelectItem>
-              {employeeOptions.map((e) => (
-                <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className="w-full justify-between"
+              >
+                {employee === "all"
+                  ? "All employees"
+                  : employeeOptions.find((e) => e.id === employee)?.name}
+
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+              <Command>
+                <CommandInput placeholder="Search employee..." />
+
+                <CommandEmpty>No employee found.</CommandEmpty>
+
+                <CommandGroup>
+                  <CommandItem
+                    value="All employees"
+                    onSelect={() => {
+                      setEmployee("all");
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        employee === "all" ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    All employees
+                  </CommandItem>
+
+                  {employeeOptions.map((e) => (
+                    <CommandItem
+                      key={e.id}
+                      value={e.name}
+                      onSelect={() => {
+                        setEmployee(e.id);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          employee === e.id ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {e.name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </Command>
+            </PopoverContent>
+          </Popover>
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-xs text-muted-foreground mr-1">Priority:</span>
             {(["high", "medium", "low"] as Priority[]).map((p) => (

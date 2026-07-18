@@ -38,7 +38,7 @@ function AdminDashboard() {
   const users = listUsers();
   const active = users.filter((u) => u.isActive).length;
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Admin overview</h1>
         <p className="text-muted-foreground">Manage departments, projects, users and the predefined task library.</p>
@@ -47,8 +47,6 @@ function AdminDashboard() {
         <StatCard icon={Users} label="Active users" value={active} />
         <StatCard icon={Network} label="Total users" value={users.length} />
         <StatCard icon={BookMarked} label="Predefined tasks" value={undefined} hint="See library" />
-      </div>
-      <div className="grid gap-4 md:grid-cols-3">
         <AdminLink to="/admin/departments" title="Departments" desc="Create, edit, deactivate." icon={Building2} />
         <AdminLink to="/admin/projects" title="Projects" desc="Manage projects by department." icon={FolderKanban} />
         <AdminLink to="/admin/users" title="Users" desc="Create, edit, deactivate." icon={Users} />
@@ -151,20 +149,44 @@ function TaskDashboard() {
   }, [rows]);
 
   const cards: { id: Filter; label: string; value: number }[] = [
+    // ---------- Status ----------
     { id: "yet_to_start", label: "Yet to Start", value: counts.yet_to_start },
     { id: "in_progress", label: "Active Tasks", value: counts.in_progress },
     { id: "on_hold", label: "On Hold", value: counts.on_hold },
+
+    ...(isMgrOrTL
+      ? [
+          {
+            id: "pending_reviews" as Filter,
+            label: "Pending Reviews",
+            value: reviews.length,
+          },
+        ]
+      : [
+          {
+            id: "submitted_for_review" as Filter,
+            label: "Submitted for Review",
+            value: counts.submitted_for_review,
+          },
+        ]),
+
+    { id: "closed", label: "Closed", value: counts.closed },
+
+    // ---------- Deadlines ----------
     { id: "overdue", label: "Overdue", value: counts.overdue },
     { id: "due_today", label: "Due Today", value: counts.due_today },
     { id: "due_tomorrow", label: "Due Tomorrow", value: counts.due_tomorrow },
     { id: "due_72h", label: "Due in 72 Hours", value: counts.due_72h },
+
     ...(isMgrOrTL
       ? [
-          { id: "pending_reviews" as Filter, label: "Pending Reviews", value: reviews.length },
-          { id: "pending_extensions" as Filter, label: "Pending Extension Requests", value: extensions.length },
+          {
+            id: "pending_extensions" as Filter,
+            label: "Pending Extension Requests",
+            value: extensions.length,
+          },
         ]
-      : [{ id: "submitted_for_review" as Filter, label: "Submitted for Review", value: counts.submitted_for_review }]),
-    { id: "closed", label: "Closed", value: counts.closed },
+      : []),
   ];
 
   const users = listUsers();
@@ -213,18 +235,18 @@ function TaskDashboard() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 w-fit">
         {cards.map((c) => (
           <button
             key={c.id}
             onClick={() => setFilter((cur) => cur === c.id ? "all" : c.id)}
             className={cn(
-              "rounded-lg border bg-card p-4 text-left hover:border-primary/60 hover:shadow-sm transition",
+              "rounded-lg border p-2.5 h-20 hover:border-primary/60 hover:shadow-sm transition",
               filter === c.id && "border-primary ring-1 ring-primary/40",
             )}
           >
-            <div className="text-2xl font-semibold">{c.value}</div>
-            <div className="text-xs text-muted-foreground mt-1">{c.label}</div>
+            <div className="text-xl font-semibold">{c.value}</div>
+            <div className="text-[11px] text-muted-foreground mt-1">{c.label}</div>
           </button>
         ))}
       </div>
@@ -245,7 +267,7 @@ function TaskDashboard() {
             )}
           </div>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-1.5">
           {filtered.length === 0 && (
             <p className="text-sm text-muted-foreground">
               {filter === "all" ? "No tasks yet." : "Nothing matches this filter."}
@@ -259,12 +281,12 @@ function TaskDashboard() {
                 key={assignment.id}
                 to="/tasks/$id"
                 params={{ id: task.id }}
-                className={`block rounded-md border p-3 hover:bg-accent transition ${isOverdue ? "border-destructive/50 bg-destructive/5" : ""}`}
+                className={`block rounded-md border p-2 hover:bg-accent transition ${isOverdue ? "border-destructive/50 bg-destructive/5" : ""}`}
               >
-                <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center justify-between gap-1 flex-wrap">
                   <div className="min-w-0">
                     <div className="font-medium">{task.title}</div>
-                    <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+                    <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
                       <span>{projectById(task.projectId)?.name ?? "—"}</span>
                       <span>· Due {format(new Date(task.deadline), "PP")}</span>
                       {isMgrOrTL && assignee && <span>· {assignee.fullName}</span>}

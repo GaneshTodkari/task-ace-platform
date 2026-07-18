@@ -28,8 +28,12 @@ export const Route = createFileRoute("/_authenticated/admin/predefined")({
 });
 
 const empty = {
-  title: "", projectId: "", defaultPriority: "medium" as Priority,
-  defaultComments: "", isArchived: false,
+  id: "",
+  title: "",
+  projectId: "",
+  defaultPriority: "medium" as Priority,
+  defaultComments: "",
+  isArchived: false,
 };
 
 function PredefinedPage() {
@@ -61,20 +65,34 @@ function PredefinedPage() {
     [isAdmin, user.departmentId],
   );
 
-  const openCreate = () => { setEditing(null); setForm({ ...empty }); setOpen(true); };
+  const openCreate = () => {
+  setEditing(null);
+  setForm({ ...empty });
+  setOpen(true);
+};
   const openEdit = (p: PredefinedTask) => {
-    if (!canManagePredefined(user, p)) { toast.error("Not permitted"); return; }
-    setEditing(p);
-    setForm({
-      title: p.title, projectId: p.projectId, defaultPriority: p.defaultPriority,
-      defaultComments: p.defaultComments ?? "", isArchived: p.isArchived,
-    });
-    setOpen(true);
-  };
+  if (!canManagePredefined(user, p)) {
+    toast.error("Not permitted");
+    return;
+  }
+
+  setEditing(p);
+
+  setForm({
+    id: p.id,
+    title: p.title,
+    projectId: p.projectId,
+    defaultPriority: p.defaultPriority,
+    defaultComments: p.defaultComments ?? "",
+    isArchived: p.isArchived,
+  });
+
+  setOpen(true);
+};
 
   const save = () => {
-    if (!form.title || !form.projectId) {
-      toast.error("Title and project are required");
+    if (!form.id || !form.title || !form.projectId) {
+      toast.error("Task Code, Title and Project are required");
       return;
     }
     // Manager: project must be in own department
@@ -85,7 +103,10 @@ function PredefinedPage() {
         return;
       }
     }
-    upsertPredefined({ ...form, id: editing?.id });
+    upsertPredefined({
+    ...form,
+    id: editing ? editing.id : form.id,
+});
     toast.success(editing ? "Updated" : "Added");
     setOpen(false);
   };
@@ -106,7 +127,31 @@ function PredefinedPage() {
           <DialogContent>
             <DialogHeader><DialogTitle>{editing ? "Edit template" : "New template"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <Field label="Title"><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
+              <Field label="Task Code">
+  <Input
+    placeholder="RAD-TSK-001"
+    value={form.id}
+    disabled={!!editing}
+    onChange={(e) =>
+      setForm({
+        ...form,
+        id: e.target.value.toUpperCase(),
+      })
+    }
+  />
+</Field>
+
+<Field label="Task Title">
+  <Input
+    value={form.title}
+    onChange={(e) =>
+      setForm({
+        ...form,
+        title: e.target.value,
+      })
+    }
+  />
+</Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Project">
                   <Select value={form.projectId} onValueChange={(v) => setForm({ ...form, projectId: v })}>
@@ -144,6 +189,7 @@ function PredefinedPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-muted-foreground border-b">
+                  <th className="py-2 pr-3">Code</th>
                   <th className="py-2 pr-3">Title</th>
                   <th className="py-2 pr-3">Project</th>
                   <th className="py-2 pr-3">Department</th>
@@ -158,7 +204,13 @@ function PredefinedPage() {
                   const dep = departmentById(proj?.departmentId);
                   return (
                     <tr key={p.id} className="border-b last:border-0">
-                      <td className="py-2 pr-3 font-medium">{p.title}</td>
+                      <td className="py-2 pr-3 font-mono">
+  {p.id}
+</td>
+
+<td className="py-2 pr-3 font-medium">
+  {p.title}
+</td>
                       <td className="py-2 pr-3">{proj?.name ?? "—"}</td>
                       <td className="py-2 pr-3">{dep?.name ?? "—"}</td>
                       <td className="py-2 pr-3 capitalize">{p.defaultPriority}</td>

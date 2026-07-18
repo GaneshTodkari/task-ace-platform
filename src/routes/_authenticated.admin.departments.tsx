@@ -24,7 +24,8 @@ function DepartmentsPage() {
   useDBVersion();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Department | null>(null);
-  const [name, setName] = useState("");
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");   
 
   if (!user || user.role !== "admin") return <p className="text-muted-foreground">Admin only.</p>;
 
@@ -32,13 +33,33 @@ function DepartmentsPage() {
   const projects = listProjects();
   const tasks = listTasks();
 
-  const openCreate = () => { setEditing(null); setName(""); setOpen(true); };
-  const openEdit = (d: Department) => { setEditing(d); setName(d.name); setOpen(true); };
+  const openCreate = () => {
+  setEditing(null);
+  setCode("");
+  setName("");
+  setOpen(true);
+};
+
+const openEdit = (d: Department) => {
+  setEditing(d);
+  setCode(d.id);
+  setName(d.name);
+  setOpen(true);
+};
 
   const save = () => {
-    if (!name.trim()) { toast.error("Name required"); return; }
-    if (editing) { updateDepartment(editing.id, { name: name.trim() }); toast.success("Updated"); }
-    else { createDepartment(name.trim()); toast.success("Created"); }
+    if (!code.trim() || !name.trim()) {
+      toast.error("Department Code and Name are required");
+      return;
+    }
+    if (editing) {
+      updateDepartment(editing.id, {name: name.trim(),});
+      toast.success("Updated");
+    } else {
+  createDepartment({ id: code.trim().toUpperCase(),name: name.trim(),
+  });
+  toast.success("Created");
+}
     setOpen(false);
   };
 
@@ -53,7 +74,30 @@ function DepartmentsPage() {
           <DialogTrigger asChild><Button onClick={openCreate}><Plus className="size-4 mr-1" />Add department</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>{editing ? "Edit department" : "New department"}</DialogTitle></DialogHeader>
-            <div className="space-y-2"><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
+            <div className="space-y-3">
+              <div>
+                <Label>Department Code</Label>
+                <Input
+                  placeholder="RAD001"
+                  value={code}
+                  onChange={(e) =>
+                    setCode(e.target.value.toUpperCase())
+                  }
+                  disabled={!!editing}
+                />
+              </div>
+
+              <div>
+                <Label>Department Name</Label>
+                <Input
+                  placeholder="Radiology"
+                  value={name}
+                  onChange={(e) =>
+                    setName(e.target.value)
+                  }
+                />
+              </div>
+            </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
               <Button onClick={save}>{editing ? "Save" : "Add"}</Button>
@@ -68,6 +112,7 @@ function DepartmentsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-muted-foreground border-b">
+                <th className="py-2 pr-3">Code</th>
                 <th className="py-2 pr-3">Name</th>
                 <th className="py-2 pr-3">Projects</th>
                 <th className="py-2 pr-3">Tasks</th>
@@ -81,6 +126,7 @@ function DepartmentsPage() {
                 const tks = tasks.filter((t) => projs.some((p) => p.id === t.projectId));
                 return (
                   <tr key={d.id} className="border-b last:border-0">
+                    <td className="py-2 pr-3 font-mono">{d.id}</td>
                     <td className="py-2 pr-3 font-medium">{d.name}</td>
                     <td className="py-2 pr-3">{projs.length}</td>
                     <td className="py-2 pr-3">{tks.length}</td>

@@ -52,10 +52,16 @@ export function listDepartments(activeOnly = false): Department[] {
   const all = getDB().departments;
   return activeOnly ? all.filter((d) => d.isActive) : [...all];
 }
-export function createDepartment(name: string) {
-  const id = uid("d");
-  updateDB((d) => { d.departments.push({ id, name, isActive: true }); });
-  return id;
+export function createDepartment(input: { id: string; name: string }) {
+  updateDB((d) => {
+    d.departments.push({
+      id: input.id,
+      name: input.name,
+      isActive: true,
+    });
+  });
+
+  return input.id;
 }
 export function updateDepartment(id: string, patch: Partial<Omit<Department, "id">>) {
   updateDB((d) => {
@@ -85,12 +91,22 @@ export function projectById(id?: string) {
   if (!id) return null;
   return getDB().projects.find((p) => p.id === id) ?? null;
 }
-export function createProject(input: { name: string; departmentId: string }) {
-  const id = uid("pr");
-  updateDB((d) => {
-    d.projects.push({ id, name: input.name, departmentId: input.departmentId, isActive: true, isArchived: false });
-  });
-  return id;
+export function createProject(input: {
+    id: string;
+    name: string;
+    departmentId: string;
+}) {
+    updateDB((d) => {
+        d.projects.push({
+            id: input.id,
+            name: input.name,
+            departmentId: input.departmentId,
+            isActive: true,
+            isArchived: false,
+        });
+    });
+
+    return input.id;
 }
 export function updateProject(id: string, patch: Partial<Omit<Project, "id">>) {
   updateDB((d) => {
@@ -123,7 +139,7 @@ export function upsertPredefined(p: Omit<PredefinedTask, "id"> & { id?: string }
       const i = d.predefined.findIndex((x) => x.id === p.id);
       if (i >= 0) d.predefined[i] = { ...d.predefined[i], ...p, id: p.id };
     } else {
-      d.predefined.push({ ...p, id: uid("p") });
+      d.predefined.push({...p,id: p.id!,});
     }
   });
 }
