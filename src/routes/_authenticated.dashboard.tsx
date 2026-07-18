@@ -1,5 +1,5 @@
-import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useAuth, useDBVersion } from "@/lib/auth-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -12,8 +12,7 @@ import {
 } from "@/lib/api";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
 import { format, differenceInCalendarDays } from "date-fns";
-import { cn } from "@/lib/utils";
-import { Users, BookMarked, Network, FolderKanban, Building2 } from "lucide-react";
+import { AlertTriangle, Clock, ListTodo, CheckCircle2, Users, BookMarked, Network, FolderKanban, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getDescendants } from "@/lib/hierarchy";
 import {
@@ -29,8 +28,8 @@ function Dashboard() {
   useDBVersion();
   useEffect(() => { runDueChecks(); }, []);
   if (!user) return null;
-  if (user.role !== "admin") return <Navigate to="/tasks" />;
-  return <AdminDashboard />;
+  if (user.role === "admin") return <AdminDashboard />;
+  return <TaskDashboard />;
 }
 
 function AdminDashboard() {
@@ -92,56 +91,8 @@ function StatCard({ icon: Icon, label, value, hint }: any) {
   );
 }
 
-type FilterKey =
-  | "yet_to_start"
-  | "active"
-  | "on_hold"
-  | "overdue"
-  | "due_today"
-  | "due_tomorrow"
-  | "due_72h"
-  | "pending_reviews"
-  | "pending_extensions"
-  | "closed";
-
-function SummaryCard({
-  label,
-  count,
-  color,
-  active,
-  onClick,
-}: {
-  label: string;
-  count: number;
-  color: "default" | "orange" | "red" | "blue";
-  active: boolean;
-  onClick: () => void;
-}) {
-  const colorCls = {
-    default: "bg-card hover:border-primary/60",
-    orange: "bg-warning/5 border-warning/50 text-warning hover:bg-warning/10",
-    red: "bg-destructive/5 border-destructive/50 text-destructive hover:bg-destructive/10",
-    blue: "bg-info/5 border-info/50 text-info hover:bg-info/10",
-  }[color];
-
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "rounded-lg border p-4 text-left transition hover:shadow-sm",
-        colorCls,
-        active && "ring-2 ring-primary",
-      )}
-    >
-      <div className="text-2xl font-semibold">{count}</div>
-      <div className="text-xs font-medium mt-1">{label}</div>
-    </button>
-  );
-}
-
 function TaskDashboard() {
   const { user } = useAuth();
-  const [filter, setFilter] = useState<FilterKey | null>(null);
   if (!user) return null;
   const mine = myAssignments(user);
   const team = (user.role === "manager" || user.role === "team_lead") ? teamAssignments(user) : [];
@@ -149,50 +100,13 @@ function TaskDashboard() {
   const extensions = (user.role === "manager" || user.role === "team_lead") ? pendingExtensionsFor(user) : [];
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const daysAway = (d: string) => differenceInCalendarDays(new Date(d + "T00:00:00"), today);
-
-  const counts = useMemo(() => {
-    const c = {
-      yet_to_start: 0, active: 0, on_hold: 0, overdue: 0,
-      due_today: 0, due_tomorrow: 0, due_72h: 0,
-      pending_reviews: 0, pending_extensions: 0, closed: 0,
-    };
-    for (const { task, assignment } of mine) {
-      if (assignment.status === "closed") { c.closed++; continue; }
-      if (assignment.status === "yet_to_start") c.yet_to_start++;
-      if (assignment.status === "in_progress") c.active++;
-      if (assignment.status === "on_hold") c.on_hold++;
-      if (assignment.status === "submitted_for_review") c.pending_reviews++;
-      if (assignment.extensionRequests.some((e) => e.status === "pending")) c.pending_extensions++;
-      const d = daysAway(task.deadline);
-      if (d < 0) c.overdue++;
-      if (d === 0) c.due_today++;
-      if (d === 1) c.due_tomorrow++;
-      if (d >= 0 && d <= 3) c.due_72h++;
-    }
-    return c;
-  }, [mine]);
-
-  const filteredMine = useMemo(() => {
-    if (!filter) return mine;
-    return mine.filter(({ task, assignment }) => {
-      const d = daysAway(task.deadline);
-      switch (filter) {
-        case "yet_to_start": return assignment.status === "yet_to_start";
-        case "active": return assignment.status === "in_progress";
-        case "on_hold": return assignment.status === "on_hold";
-        case "overdue": return assignment.status !== "closed" && d < 0;
-        case "due_today": return assignment.status !== "closed" && d === 0;
-        case "due_tomorrow": return assignment.status !== "closed" && d === 1;
-        case "due_72h": return assignment.status !== "closed" && d >= 0 && d <= 3;
-        case "pending_reviews": return assignment.status === "submitted_for_review";
-        case "pending_extensions": return assignment.extensionRequests.some((e) => e.status === "pending");
-        case "closed": return assignment.status === "closed";
-        default: return true;
-      }
-    });
-  }, [mine, filter]);
+  const open = mine.filter((x) => x.assignment.status !== "closed");
+  const overdue = open.filter((x) => new Date(x.task.deadline) < today);
+  const dueSoon = open.filter((x) => {
+    const d = differenceInCalendarDays(new Date(x.task.deadline), today);
+    return d >= 0 && d <= 1;
+  });
+  const closed = mine.filter((x) => x.assignment.status === "closed").length;
 
   const users = listUsers();
   const descendants = getDescendants(users, user.id);
@@ -220,17 +134,11 @@ function TaskDashboard() {
         </Button>
       </div>
 
-      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
-        <SummaryCard label="Yet to Start" count={counts.yet_to_start} color="default" active={filter === "yet_to_start"} onClick={() => setFilter(filter === "yet_to_start" ? null : "yet_to_start")} />
-        <SummaryCard label="Active Tasks" count={counts.active} color="default" active={filter === "active"} onClick={() => setFilter(filter === "active" ? null : "active")} />
-        <SummaryCard label="On Hold" count={counts.on_hold} color="orange" active={filter === "on_hold"} onClick={() => setFilter(filter === "on_hold" ? null : "on_hold")} />
-        <SummaryCard label="Overdue" count={counts.overdue} color="red" active={filter === "overdue"} onClick={() => setFilter(filter === "overdue" ? null : "overdue")} />
-        <SummaryCard label="Due Today" count={counts.due_today} color="default" active={filter === "due_today"} onClick={() => setFilter(filter === "due_today" ? null : "due_today")} />
-        <SummaryCard label="Due Tomorrow" count={counts.due_tomorrow} color="default" active={filter === "due_tomorrow"} onClick={() => setFilter(filter === "due_tomorrow" ? null : "due_tomorrow")} />
-        <SummaryCard label="Due in 72 Hours" count={counts.due_72h} color="blue" active={filter === "due_72h"} onClick={() => setFilter(filter === "due_72h" ? null : "due_72h")} />
-        <SummaryCard label="Pending Reviews" count={counts.pending_reviews} color="blue" active={filter === "pending_reviews"} onClick={() => setFilter(filter === "pending_reviews" ? null : "pending_reviews")} />
-        <SummaryCard label="Pending Extension Requests" count={counts.pending_extensions} color="default" active={filter === "pending_extensions"} onClick={() => setFilter(filter === "pending_extensions" ? null : "pending_extensions")} />
-        <SummaryCard label="Closed" count={counts.closed} color="default" active={filter === "closed"} onClick={() => setFilter(filter === "closed" ? null : "closed")} />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard icon={ListTodo} label="My tasks" value={mine.length} />
+        <StatCard icon={AlertTriangle} label="Overdue" value={overdue.length} />
+        <StatCard icon={Clock} label="Due today/tomorrow" value={dueSoon.length} />
+        <StatCard icon={CheckCircle2} label="Closed" value={closed} />
       </div>
 
       {(user.role === "manager" || user.role === "team_lead") && (
@@ -285,8 +193,8 @@ function TaskDashboard() {
           <CardDescription>Assignments where you are the assignee.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
-          {filteredMine.length === 0 && <p className="text-sm text-muted-foreground">No tasks assigned.</p>}
-          {filteredMine.map(({ task, assignment }) => {
+          {mine.length === 0 && <p className="text-sm text-muted-foreground">No tasks assigned.</p>}
+          {mine.map(({ task, assignment }) => {
             const isOverdue = assignment.status !== "closed" && new Date(task.deadline) < today;
             return (
               <Link

@@ -21,7 +21,7 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (user) navigate({ to: user.role === "admin" ? "/dashboard" : "/tasks" });
+    if (user) navigate({ to: "/dashboard" });
   }, [user, navigate]);
 
   const submit = (e: React.FormEvent) => {
@@ -31,7 +31,7 @@ function AuthPage() {
     setBusy(false);
     if (u) {
       toast.success(`Welcome back, ${u.fullName}`);
-      navigate({ to: u.role === "admin" ? "/dashboard" : "/tasks" });
+      navigate({ to: "/dashboard" });
     } else {
       toast.error("Invalid credentials or inactive user");
     }
