@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useAuth, useDBVersion } from "@/lib/auth-context";
-import { tasksFor, listUsers, projectById, pendingReviewsFor, pendingExtensionsFor } from "@/lib/api";
+import { tasksFor, listUsers, projectById } from "@/lib/api";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
