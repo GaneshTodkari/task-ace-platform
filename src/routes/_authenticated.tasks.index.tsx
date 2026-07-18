@@ -134,8 +134,18 @@ function TaskList() {
     setPriorityFilter((cur) => cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]);
   };
 
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Tasks</h1>
+          <p className="text-muted-foreground">Assignments visible to you within your hierarchy.</p>
+        </div>
+        <Button asChild><Link to="/tasks/new">Create task</Link></Button>
+      </div>
 
       <Card>
+
         <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-3">
           <Input placeholder="Search title…" value={q} onChange={(e) => setQ(e.target.value)} />
