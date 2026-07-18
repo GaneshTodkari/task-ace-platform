@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ChangePasswordRouteImport } from './routes/change-password'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated.notifications'
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated.team'
@@ -36,6 +38,16 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangePasswordRoute = ChangePasswordRouteImport.update({
+  id: '/change-password',
+  path: '/change-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -102,6 +114,8 @@ const AuthenticatedTasksNewRoute = AuthenticatedTasksNewRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/change-password': typeof ChangePasswordRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/team': typeof AuthenticatedTeamRoute
@@ -117,6 +131,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/change-password': typeof ChangePasswordRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/team': typeof AuthenticatedTeamRoute
@@ -134,6 +150,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
+  '/change-password': typeof ChangePasswordRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/team': typeof AuthenticatedTeamRoute
@@ -151,6 +169,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/change-password'
+    | '/forgot-password'
     | '/dashboard'
     | '/notifications'
     | '/team'
@@ -166,6 +186,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/change-password'
+    | '/forgot-password'
     | '/dashboard'
     | '/notifications'
     | '/team'
@@ -182,6 +204,8 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/change-password'
+    | '/forgot-password'
     | '/_authenticated/dashboard'
     | '/_authenticated/notifications'
     | '/_authenticated/team'
@@ -199,6 +223,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ChangePasswordRoute: typeof ChangePasswordRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -222,6 +248,20 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/change-password': {
+      id: '/change-password'
+      path: '/change-password'
+      fullPath: '/change-password'
+      preLoaderRoute: typeof ChangePasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/dashboard': {
@@ -340,6 +380,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   AuthRoute: AuthRoute,
+  ChangePasswordRoute: ChangePasswordRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

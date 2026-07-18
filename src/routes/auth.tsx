@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { CheckSquare } from "lucide-react";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Sign in — TaskFlow" }] }),
@@ -79,6 +80,24 @@ function AuthPage() {
               <Button type="submit" className="w-full" disabled={busy}>
                 Sign in
               </Button>
+
+              <div className="flex items-center justify-center gap-2 pt-2 text-sm">
+                <Link
+                  to="/forgot-password"
+                  className="text-primary hover:underline"
+                >
+                  Forgot Password?
+                </Link>
+
+  <span className="text-muted-foreground">|</span>
+
+  <Link
+    to="/change-password"
+    className="text-primary hover:underline"
+  >
+    Change Password
+  </Link>
+</div>
             </form>
             <div className="mt-6 space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Demo accounts (password: demo)</p>
