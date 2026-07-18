@@ -72,31 +72,6 @@ function TeamPage() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Workload</CardTitle>
-          <CardDescription>Open and closed assignments per reportee.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-72">
-            <ResponsiveContainer>
-              <BarChart data={workload}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} />
-                <YAxis allowDecimals={false} stroke="var(--muted-foreground)" fontSize={12} />
-                <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8 }} />
-                <Legend />
-                <Bar dataKey="Yet to Start" stackId="a" fill="var(--muted-foreground)" />
-                <Bar dataKey="In progress" stackId="a" fill="var(--info)" />
-                <Bar dataKey="On hold" stackId="a" fill="var(--warning)" />
-                <Bar dataKey="In review" stackId="a" fill="var(--primary)" />
-                <Bar dataKey="Closed" stackId="a" fill="var(--success)" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-3 flex-wrap">
           <div>
             <CardTitle>Drill-down</CardTitle>
@@ -190,6 +165,32 @@ function TeamPage() {
           ))}
         </CardContent>
       </Card>
-    </div>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Workload</CardTitle>
+          <CardDescription>Open and closed assignments per reportee.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-72">
+            <ResponsiveContainer>
+              <BarChart data={workload}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} />
+                <YAxis allowDecimals={false} stroke="var(--muted-foreground)" fontSize={12} />
+                <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8 }} />
+                <Legend />
+                <Bar dataKey="Yet to Start" stackId="a" fill="var(--muted-foreground)" />
+                <Bar dataKey="In progress" stackId="a" fill="var(--info)" />
+                <Bar dataKey="On hold" stackId="a" fill="var(--warning)" />
+                <Bar dataKey="In review" stackId="a" fill="var(--primary)" />
+                <Bar dataKey="Closed" stackId="a" fill="var(--success)" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+          </div>
   );
 }
