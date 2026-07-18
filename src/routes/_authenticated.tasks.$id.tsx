@@ -70,8 +70,20 @@ function TaskDetail() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div>
-        <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/tasks" })} className="-ml-2">
-          <ArrowLeft className="size-4 mr-1" /> Back
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            if (window.history.length > 1) {
+              window.history.back();
+            } else {
+              navigate({ to: "/dashboard" });
+            }
+          }}
+          className="-ml-2"
+        >
+          <ArrowLeft className="size-4 mr-1" />
+          Back
         </Button>
         <div className="flex items-start justify-between gap-3 flex-wrap mt-2">
           <div>
