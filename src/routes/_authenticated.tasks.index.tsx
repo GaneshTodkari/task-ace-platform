@@ -40,8 +40,8 @@ function TaskList() {
 
   const users = listUsers();
   const tasks = useMemo(() => (user ? tasksFor(user) : []), [user]);
-  const reviews = user && (user.role === "manager" || user.role === "team_lead") ? pendingReviewsFor(user) : [];
-  const extensions = user && (user.role === "manager" || user.role === "team_lead") ? pendingExtensionsFor(user) : [];
+  const reviews: { task: { id: string }; assignment: { assigneeId: string } }[] = [];
+  const extensions: { task: { id: string }; assignment: { assigneeId: string } }[] = [];
 
   const rows = useMemo(() => {
     const out: {
