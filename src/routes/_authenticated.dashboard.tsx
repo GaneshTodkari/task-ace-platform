@@ -12,7 +12,8 @@ import {
 } from "@/lib/api";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
 import { format, differenceInCalendarDays } from "date-fns";
-import { AlertTriangle, Clock, ListTodo, CheckCircle2, Users, BookMarked, Network, FolderKanban, Building2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Users, BookMarked, Network, FolderKanban, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getDescendants } from "@/lib/hierarchy";
 import {
