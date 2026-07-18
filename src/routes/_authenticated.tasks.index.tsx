@@ -134,48 +134,6 @@ function TaskList() {
     setPriorityFilter((cur) => cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]);
   };
 
-  const cards: { id: Filter; label: string; value: number }[] = [
-    { id: "yet_to_start", label: "Yet to Start", value: counts.yet_to_start },
-    { id: "in_progress", label: "Active Tasks", value: counts.in_progress },
-    { id: "on_hold", label: "On Hold", value: counts.on_hold },
-    { id: "overdue", label: "Overdue", value: counts.overdue },
-    { id: "due_today", label: "Due Today", value: counts.due_today },
-    { id: "due_tomorrow", label: "Due Tomorrow", value: counts.due_tomorrow },
-    { id: "due_72h", label: "Due in 72 Hours", value: counts.due_72h },
-    ...(isMgrOrTL
-      ? [
-          { id: "pending_reviews" as Filter, label: "Pending Reviews", value: reviews.length },
-          { id: "pending_extensions" as Filter, label: "Pending Extension Requests", value: extensions.length },
-        ]
-      : [{ id: "submitted_for_review" as Filter, label: "Submitted for Review", value: counts.submitted_for_review }]),
-    { id: "closed", label: "Closed", value: counts.closed },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Tasks</h1>
-          <p className="text-muted-foreground">Assignments visible to you within your hierarchy.</p>
-        </div>
-        <Button asChild><Link to="/tasks/new">Create task</Link></Button>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {cards.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setFilter((cur) => cur === c.id ? "all" : c.id)}
-            className={cn(
-              "rounded-lg border bg-card p-4 text-left hover:border-primary/60 hover:shadow-sm transition",
-              filter === c.id && "border-primary ring-1 ring-primary/40",
-            )}
-          >
-            <div className="text-2xl font-semibold">{c.value}</div>
-            <div className="text-xs text-muted-foreground mt-1">{c.label}</div>
-          </button>
-        ))}
-      </div>
 
       <Card>
         <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
