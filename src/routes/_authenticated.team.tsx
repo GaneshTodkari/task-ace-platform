@@ -9,8 +9,24 @@ import { Badge } from "@/components/ui/badge";
 import {
   Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { format } from "date-fns";
+
+import { Check, ChevronsUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/team")({
   component: TeamPage,
@@ -20,6 +36,7 @@ function TeamPage() {
   const { user } = useAuth();
   useDBVersion();
   const [focus, setFocus] = useState<string>("all");
+  const [open, setOpen] = useState(false);
 
   if (!user) return null;
   if (user.role !== "manager" && user.role !== "team_lead") {
@@ -47,7 +64,6 @@ function TeamPage() {
   );
 
   const filtered = focus === "all" ? team : team.filter((x) => x.assignment.assigneeId === focus);
-
   return (
     <div className="space-y-6">
       <div>
@@ -86,15 +102,67 @@ function TeamPage() {
             <CardTitle>Drill-down</CardTitle>
             <CardDescription>Filter by reportee.</CardDescription>
           </div>
-          <Select value={focus} onValueChange={setFocus}>
-            <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All reports</SelectItem>
-              {desc.map((u) => (
-                <SelectItem key={u.id} value={u.id}>{u.fullName}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover open={open} onOpenChange={setOpen}>
+  <PopoverTrigger asChild>
+    <Button
+      variant="outline"
+      role="combobox"
+      aria-expanded={open}
+      className="w-56 justify-between"
+    >
+      {focus === "all"
+        ? "All reports"
+        : desc.find((u) => u.id === focus)?.fullName}
+      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+    </Button>
+  </PopoverTrigger>
+
+  <PopoverContent className="w-56 p-0">
+    <Command>
+      <CommandInput placeholder="Search reportee..." />
+
+      <CommandEmpty>No reportee found.</CommandEmpty>
+
+      <CommandGroup>
+
+        <CommandItem
+          value="All reports"
+          onSelect={() => {
+            setFocus("all");
+            setOpen(false);
+          }}
+        >
+          <Check
+            className={cn(
+              "mr-2 h-4 w-4",
+              focus === "all" ? "opacity-100" : "opacity-0"
+            )}
+          />
+          All reports
+        </CommandItem>
+
+        {desc.map((u) => (
+          <CommandItem
+            key={u.id}
+            value={u.fullName}
+            onSelect={() => {
+              setFocus(u.id);
+              setOpen(false);
+            }}
+          >
+            <Check
+              className={cn(
+                "mr-2 h-4 w-4",
+                focus === u.id ? "opacity-100" : "opacity-0"
+              )}
+            />
+            {u.fullName}
+          </CommandItem>
+        ))}
+      </CommandGroup>
+    </Command>
+  </PopoverContent>
+</Popover>
         </CardHeader>
         <CardContent className="space-y-2">
           {filtered.length === 0 && <p className="text-sm text-muted-foreground">No assignments.</p>}

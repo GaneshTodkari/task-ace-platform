@@ -126,7 +126,9 @@ export interface Task {
   taskType: TaskType;
   isRecurring?: boolean;
   recurrencePattern?: RecurrencePattern;
+  weeklyDays?: string[];
   customRecurrenceDays?: number;
+  recurrenceDayOfMonth?: number;
   parentRecurrenceId?: string;
   isSelfAssigned?: boolean; // any role can self-assign
   recurrenceDisabled?: boolean; // manager/TL can stop recurrence chain

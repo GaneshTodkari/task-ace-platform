@@ -211,9 +211,6 @@ function TaskDashboard() {
           <h1 className="text-2xl font-semibold tracking-tight">Welcome, {user.fullName.split(" ")[0]}</h1>
           <p className="text-muted-foreground capitalize">{user.role.replace("_", " ")} · {user.department}</p>
         </div>
-        <Button asChild>
-          <Link to="/tasks/new">Create task</Link>
-        </Button>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">

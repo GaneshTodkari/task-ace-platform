@@ -51,9 +51,20 @@ function NewTask() {
   const [files, setFiles] = useState<{ fileName: string; dataUrl: string }[]>([]);
   const [pattern, setPattern] = useState<RecurrencePattern>("weekly");
   const [customDays, setCustomDays] = useState<number>(7);
+  const [monthlyDay, setMonthlyDay] = useState<number>(1);
   const [reminders, setReminders] = useState<{ description: string; remindAt: string }[]>([]);
   const [remDesc, setRemDesc] = useState("");
   const [remAt, setRemAt] = useState("");
+  const [weeklyDays, setWeeklyDays] = useState<string[]>([]);
+  const weekdays = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+  ];
 
   useEffect(() => {
     if (user && user.role === "admin") navigate({ to: "/dashboard" });
@@ -105,16 +116,23 @@ function NewTask() {
 
   const effectiveAssignees = selfAssign ? [user.id] : assigneeIds;
 
-  const canSubmit = title.trim() && projectId && deadline && effectiveAssignees.length > 0
-    && (selfAssign && user.role === "manager" ? true : !selfAssign || !!assignedBy);
+  const canSubmit =
+  title.trim() &&
+  projectId &&
+  (taskType === "recurring" || !!deadline) &&
+  (pattern !== "weekly" || weeklyDays.length > 0) &&
+  effectiveAssignees.length > 0 &&
+  (selfAssign && user.role === "manager"
+    ? true
+    : !selfAssign || !!assignedBy);
 
   const submit = () => {
     if (!canSubmit) {
       toast.error("Fill mandatory fields and pick assignees.");
       return;
     }
-    createTask(
-      {
+    
+    createTask({
         title: title.trim(),
         description: description.trim() || undefined,
         projectId,
@@ -125,13 +143,34 @@ function NewTask() {
         comments: comments.trim() || undefined,
         attachments: files,
         taskType,
+
         isRecurring: taskType === "recurring",
-        recurrencePattern: taskType === "recurring" ? pattern : undefined,
-        customRecurrenceDays: taskType === "recurring" && pattern === "custom" ? customDays : undefined,
+
+        recurrencePattern:
+          taskType === "recurring"
+            ? pattern
+            : undefined,
+
+        weeklyDays:
+          taskType === "recurring" &&
+          pattern === "weekly"
+            ? weeklyDays
+            : undefined,
+            
+        customRecurrenceDays:
+          taskType === "recurring" &&
+          pattern === "custom"
+            ? customDays
+            : undefined,
+
+        recurrenceDayOfMonth:
+          taskType === "recurring" &&
+          pattern === "monthly"
+            ? monthlyDay
+            : undefined,
+
         reminders,
-      },
-      user,
-    );
+    }, user);
     toast.success("Task created");
     navigate({ to: "/tasks" });
   };
@@ -245,9 +284,15 @@ function NewTask() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Due Date *">
-              <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
-            </Field>
+            {taskType === "one_time" && (
+              <Field label="Due Date *">
+                  <Input
+                      type="date"
+                      value={deadline}
+                      onChange={(e) => setDeadline(e.target.value)}
+                  />
+              </Field>
+          )}
           </div>
           <Field label="Description">
             <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
@@ -268,11 +313,66 @@ function NewTask() {
                     </SelectContent>
                   </Select>
                 </Field>
-                {pattern === "custom" && (
-                  <Field label="Every N days">
-                    <Input type="number" min={1} value={customDays} onChange={(e) => setCustomDays(Number(e.target.value))} />
+
+                {pattern === "monthly" && (
+                  <Field label="Day of Month">
+                  <Select
+                    value={monthlyDay.toString()}
+                    onValueChange={(v) => setMonthlyDay(Number(v))}
+                  >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        {Array.from({ length: 31 }, (_, i) => (
+                          <SelectItem
+                            key={i + 1}
+                            value={(i + 1).toString()}
+                          >
+                            {i + 1}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </Field>
                 )}
+
+                {pattern === "weekly" && (
+                <Field label="Repeat On">
+                  <div className="flex flex-wrap gap-2">
+                    {weekdays.map((day) => (
+                      <Button
+                        key={day}
+                        type="button"
+                        size="sm"
+                        variant={weeklyDays.includes(day) ? "default" : "outline"}
+                        onClick={() =>
+                          setWeeklyDays((prev) =>
+                            prev.includes(day)
+                              ? prev.filter((d) => d !== day)
+                              : [...prev, day]
+                          )
+                        }
+                      >
+                        {day.charAt(0).toUpperCase() + day.slice(1, 3)}
+                      </Button>
+                    ))}
+                  </div>
+                </Field>
+              )}
+
+                {pattern === "custom" && (
+                  <Field label="Every N Days">
+                    <Input
+                      type="number"
+                      min={1}
+                      value={customDays}
+                      onChange={(e) => setCustomDays(Number(e.target.value))}
+                    />
+                  </Field>
+                )}
+                                
               </div>
             </div>
           )}

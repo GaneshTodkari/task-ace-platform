@@ -192,6 +192,8 @@ export interface CreateTaskInput {
   taskType: TaskType;
   isRecurring?: boolean;
   recurrencePattern?: RecurrencePattern;
+  recurrenceDayOfMonth?: number;
+  weeklyDays?: string[];
   customRecurrenceDays?: number;
   reminders?: { description: string; remindAt: string }[];
   parentRecurrenceId?: string;
@@ -235,6 +237,7 @@ export function createTask(input: CreateTaskInput, creator: User) {
     taskType: input.taskType,
     isRecurring,
     recurrencePattern: isRecurring ? input.recurrencePattern : undefined,
+    weeklyDays: isRecurring ? input.weeklyDays : undefined,
     customRecurrenceDays: isRecurring ? input.customRecurrenceDays : undefined,
     parentRecurrenceId: input.parentRecurrenceId,
     isSelfAssigned,
