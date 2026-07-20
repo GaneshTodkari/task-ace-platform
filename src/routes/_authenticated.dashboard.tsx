@@ -131,8 +131,7 @@ const cardStyles: Record<
     iconBg: string;
     iconColor: string;
     footer: string;
-  }
-> = {
+  }> = {
   yet_to_start: {
     icon: Clock3,
     border: "border-t-4 border-t-blue-500",

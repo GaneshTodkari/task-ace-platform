@@ -1,21 +1,20 @@
 # Routes
 
-TanStack Start uses **file-based routing**. Every `.tsx` file in this directory
-is a route. Do **not** create `src/pages/`, `src/routes/_app/index.tsx`, or
-`app/layout.tsx` — those are Next.js / Remix conventions. The only root layout
-is `src/routes/__root.tsx`.
+This project uses TanStack Router with file-based routing.
 
-## Conventions
+## Important Files
 
-| File | URL |
-| --- | --- |
-| `index.tsx` | `/` |
-| `about.tsx` | `/about` |
-| `users/index.tsx` | `/users` |
-| `users/$id.tsx` | `/users/:id` (dynamic — bare `$`, no curly braces) |
-| `posts/{-$category}.tsx` | `/posts/:category?` (optional segment) |
-| `files/$.tsx` | `/files/*` (splat — read via `_splat` param, never `*`) |
-| `_layout.tsx` | layout route (renders children via `<Outlet />`) |
-| `__root.tsx` | app shell — wraps every page; preserve `<Outlet />` |
+- `__root.tsx` – Root application layout
+- `index.tsx` – Redirects to login or dashboard
+- `auth.tsx` – Login page
+- `dashboard.tsx` – Main dashboard
+- `tasks/` – Task management pages
+- `users/` – User management
+- `departments/` – Department management
+- `projects/` – Project management
 
-`routeTree.gen.ts` is auto-generated. Don't edit it by hand.
+## Notes
+
+- Do not edit `routeTree.gen.ts`; it is generated automatically.
+- All new pages should be created inside `src/routes`.
+- Shared layouts should use layout routes (`_layout.tsx`) or `__root.tsx`.
