@@ -13,7 +13,26 @@ import {
 } from "@/lib/api";
 import { StatusBadge, PriorityBadge } from "@/components/badges";
 import { format, differenceInCalendarDays } from "date-fns";
-import { AlertTriangle, ListTodo, Users, BookMarked, Network, FolderKanban, Building2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ListTodo,
+  Users,
+  BookMarked,
+  Network,
+  FolderKanban,
+  Building2,
+  Clock3,
+  PlayCircle,
+  PauseCircle,
+  ClipboardCheck,
+  CheckCircle2,
+  TriangleAlert,
+  CalendarClock,
+  CalendarDays,
+  Timer,
+  FileClock,
+  LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getDescendants } from "@/lib/hierarchy";
 import { cn } from "@/lib/utils";
@@ -43,7 +62,7 @@ function AdminDashboard() {
         <h1 className="text-2xl font-semibold tracking-tight">Admin overview</h1>
         <p className="text-muted-foreground">Manage departments, projects, users and the predefined task library.</p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-1 sm:grid-cols-3">
         <StatCard icon={Users} label="Active users" value={active} />
         <StatCard icon={Network} label="Total users" value={users.length} />
         <StatCard icon={BookMarked} label="Predefined tasks" value={undefined} hint="See library" />
@@ -105,6 +124,113 @@ type Filter =
   | "pending_reviews"
   | "pending_extensions";
 
+const cardStyles: Record<
+  Filter,
+  {
+    icon: LucideIcon;
+    border: string;
+    iconBg: string;
+    iconColor: string;
+    footer: string;
+  }
+> = {
+  yet_to_start: {
+    icon: Clock3,
+    border: "border-t-4 border-t-blue-500",
+    iconBg: "bg-blue-100",
+    iconColor: "text-blue-600",
+    footer: "Waiting",
+  },
+
+  in_progress: {
+    icon: PlayCircle,
+    border: "border-t-4 border-t-green-500",
+    iconBg: "bg-green-100",
+    iconColor: "text-green-600",
+    footer: "Healthy",
+  },
+
+  on_hold: {
+    icon: PauseCircle,
+    border: "border-t-4 border-t-yellow-500",
+    iconBg: "bg-yellow-100",
+    iconColor: "text-yellow-600",
+    footer: "Paused",
+  },
+
+  submitted_for_review: {
+    icon: ClipboardCheck,
+    border: "border-t-4 border-t-violet-500",
+    iconBg: "bg-violet-100",
+    iconColor: "text-violet-600",
+    footer: "Awaiting Review",
+  },
+
+  pending_reviews: {
+    icon: ClipboardCheck,
+    border: "border-t-4 border-t-violet-500",
+    iconBg: "bg-violet-100",
+    iconColor: "text-violet-600",
+    footer: "Needs Approval",
+  },
+
+  closed: {
+    icon: CheckCircle2,
+    border: "border-t-4 border-t-emerald-500",
+    iconBg: "bg-emerald-100",
+    iconColor: "text-emerald-600",
+    footer: "Completed",
+  },
+
+  overdue: {
+    icon: TriangleAlert,
+    border: "border-t-4 border-t-red-500",
+    iconBg: "bg-red-100",
+    iconColor: "text-red-600",
+    footer: "Needs Attention",
+  },
+
+  due_today: {
+    icon: CalendarClock,
+    border: "border-t-4 border-t-orange-500",
+    iconBg: "bg-orange-100",
+    iconColor: "text-orange-600",
+    footer: "Today",
+  },
+
+  due_tomorrow: {
+    icon: CalendarDays,
+    border: "border-t-4 border-t-amber-500",
+    iconBg: "bg-amber-100",
+    iconColor: "text-amber-600",
+    footer: "Tomorrow",
+  },
+
+  due_72h: {
+    icon: Timer,
+    border: "border-t-4 border-t-sky-500",
+    iconBg: "bg-sky-100",
+    iconColor: "text-sky-600",
+    footer: "Upcoming",
+  },
+
+  pending_extensions: {
+    icon: FileClock,
+    border: "border-t-4 border-t-orange-500",
+    iconBg: "bg-orange-100",
+    iconColor: "text-orange-600",
+    footer: "Pending",
+  },
+
+  all: {
+    icon: Clock3,
+    border: "",
+    iconBg: "",
+    iconColor: "",
+    footer: "",
+  },
+};
+
 function TaskDashboard() {
   const { user } = useAuth();
   const [filter, setFilter] = useState<Filter>("all");
@@ -148,46 +274,80 @@ function TaskDashboard() {
     return c;
   }, [rows]);
 
-  const cards: { id: Filter; label: string; value: number }[] = [
-    // ---------- Status ----------
-    { id: "yet_to_start", label: "Yet to Start", value: counts.yet_to_start },
-    { id: "in_progress", label: "Active Tasks", value: counts.in_progress },
-    { id: "on_hold", label: "On Hold", value: counts.on_hold },
+  type DashboardCard = {
+  id: Filter;
+  label: string;
+  value: number;
+}; 
+const cards: DashboardCard[] = [
+  {
+    id: "yet_to_start",
+    label: "Yet to Start",
+    value: counts.yet_to_start,
+  },
+
+  {
+    id: "in_progress",
+    label: "Active Tasks",
+    value: counts.in_progress,
+  },
+
+  {
+    id: "on_hold",
+    label: "On Hold",
+    value: counts.on_hold,
+  },
+
+  ...(isMgrOrTL
+    ? [{
+        id: "pending_reviews" as Filter,
+        label: "Pending Reviews",
+        value: reviews.length,
+      }]
+    : [{
+        id: "submitted_for_review" as Filter,
+        label: "Submitted for Review",
+        value: counts.submitted_for_review,
+      }]),
 
     ...(isMgrOrTL
-      ? [
-          {
-            id: "pending_reviews" as Filter,
-            label: "Pending Reviews",
-            value: reviews.length,
-          },
-        ]
-      : [
-          {
-            id: "submitted_for_review" as Filter,
-            label: "Submitted for Review",
-            value: counts.submitted_for_review,
-          },
-        ]),
+    ? [{
+        id: "pending_extensions" as Filter,
+        label: "Pending Extensions",
+        value: extensions.length,
+      }]
+    : []),
 
-    { id: "closed", label: "Closed", value: counts.closed },
+  {
+    id: "overdue",
+    label: "Overdue",
+    value: counts.overdue,
+  },
 
-    // ---------- Deadlines ----------
-    { id: "overdue", label: "Overdue", value: counts.overdue },
-    { id: "due_today", label: "Due Today", value: counts.due_today },
-    { id: "due_tomorrow", label: "Due Tomorrow", value: counts.due_tomorrow },
-    { id: "due_72h", label: "Due in 72 Hours", value: counts.due_72h },
+  {
+    id: "due_today",
+    label: "Due Today",
+    value: counts.due_today,
+  },
 
-    ...(isMgrOrTL
-      ? [
-          {
-            id: "pending_extensions" as Filter,
-            label: "Pending Extension Requests",
-            value: extensions.length,
-          },
-        ]
-      : []),
-  ];
+  {
+    id: "due_tomorrow",
+    label: "Due Tomorrow",
+    value: counts.due_tomorrow,
+  },
+
+  {
+    id: "due_72h",
+    label: "Due in 72 Hours",
+    value: counts.due_72h,
+  },
+
+  {
+    id: "closed",
+    label: "Closed",
+    value: counts.closed,
+  },
+];
 
   const users = listUsers();
   const filtered = rows.filter(({ task, assignment }) => {
@@ -235,22 +395,50 @@ function TaskDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 w-fit">
-        {cards.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setFilter((cur) => cur === c.id ? "all" : c.id)}
-            className={cn(
-              "rounded-lg border p-2.5 h-20 hover:border-primary/60 hover:shadow-sm transition",
-              filter === c.id && "border-primary ring-1 ring-primary/40",
-            )}
-          >
-            <div className="text-xl font-semibold">{c.value}</div>
-            <div className="text-[11px] text-muted-foreground mt-1">{c.label}</div>
-          </button>
-        ))}
-      </div>
+      <div className="grid grid-cols-5 gap-3 w-fit">
+        {cards.map((c) => {
+          const style = cardStyles[c.id];
+          const Icon = style.icon;
 
+          return (
+            <button
+              key={c.id}
+              onClick={() => setFilter((cur) => (cur === c.id ? "all" : c.id))}
+              className={cn(
+                "w-[150px] h-[85px] rounded-xl border bg-card px-1 py-2 text-left shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5",
+                style.border,
+                filter === c.id && "ring-2 ring-primary"
+              )}
+            >
+              <div className="flex items-start gap-2">
+                <div
+                  className={cn(
+                    "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
+                    style.iconBg
+                  )}
+                >
+                  <Icon className={cn("h-4 w-4", style.iconColor)} />
+                </div>
+
+                <div className="flex-1">
+                  <div className="text-[12px] font-semibold leading-tight">
+                    {c.label}
+                  </div>
+
+                  <div className="mt-1 text-l font-bold items-center leading-none">
+                    {c.value}
+                  </div>
+
+                  <div className="mt-1 text-[10px] text-muted-foreground">
+                    {style.footer}
+                  </div>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-2 flex-wrap">
