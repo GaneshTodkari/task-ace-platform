@@ -65,7 +65,6 @@ function AdminDashboard() {
       <div className="grid gap-1 sm:grid-cols-3">
         <StatCard icon={Users} label="Active users" value={active} />
         <StatCard icon={Network} label="Total users" value={users.length} />
-        <StatCard icon={BookMarked} label="Predefined tasks" value={undefined} hint="See library" />
         <AdminLink to="/admin/departments" title="Departments" desc="Create, edit, deactivate." icon={Building2} />
         <AdminLink to="/admin/projects" title="Projects" desc="Manage projects by department." icon={FolderKanban} />
         <AdminLink to="/admin/users" title="Users" desc="Create, edit, deactivate." icon={Users} />
